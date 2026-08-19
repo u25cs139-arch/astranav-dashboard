@@ -3,11 +3,18 @@ import { SimulationProvider } from './context/SimulationContext';
 import LandingPage from './components/1-auth/LandingPage';
 import MoonStimulation from './components/moon/MoonStimulation';
 import MarsStimulation from './components/Mars/MarsStimulation';
-import AstraNavDashboard from './components/AstraNavDashboard';
 
 function App() {
   const [session, setSession] = useState(null);
   const [selectedEnv, setSelectedEnv] = useState(null);
+
+  // Set the environment immediately when session completes authentication
+  const handleAuthenticated = (data) => {
+    setSession(data);
+    if (data.environment) {
+      setSelectedEnv(data.environment.toLowerCase());
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -27,15 +34,18 @@ function App() {
   }, [session]);
 
   if (!session) {
-    return <LandingPage onAuthenticated={(data) => setSession(data)} />;
+    return <LandingPage onAuthenticated={handleAuthenticated} />;
   }
 
-  if (selectedEnv === 'moon') {
+  if (selectedEnv === 'moon' || session?.environment?.toLowerCase() === 'moon') {
     return (
       <SimulationProvider>
         <div style={{ position: 'relative' }}>
           <button 
-            onClick={() => setSelectedEnv(null)}
+            onClick={() => {
+              setSession(null);
+              setSelectedEnv(null);
+            }}
             style={{ 
               position: 'absolute', 
               top: 15, 
@@ -57,12 +67,15 @@ function App() {
     );
   }
 
-  if (selectedEnv === 'mars') {
+  if (selectedEnv === 'mars' || session?.environment?.toLowerCase() === 'mars') {
     return (
       <SimulationProvider>
         <div style={{ position: 'relative' }}>
           <button 
-            onClick={() => setSelectedEnv(null)}
+            onClick={() => {
+              setSession(null);
+              setSelectedEnv(null);
+            }}
             style={{ 
               position: 'absolute', 
               top: 15, 
@@ -84,12 +97,7 @@ function App() {
     );
   }
 
-  return (
-    <AstraNavDashboard 
-      onSelectMoon={() => setSelectedEnv('moon')} 
-      onSelectMars={() => setSelectedEnv('mars')} 
-    />
-  );
+  return null;
 }
 
 export default App;

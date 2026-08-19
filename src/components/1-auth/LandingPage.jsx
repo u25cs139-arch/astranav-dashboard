@@ -70,10 +70,12 @@ export default function LandingPage({ onAuthenticated }) {
     const formattedId = roverId.toUpperCase();
     if (VALID_ROVERS[formattedId] === roverPassword) {
       setError('');
+      // Send complete auth payload directly to bypass duplicate environment screen
       onAuthenticated({
         officerId,
         environment: selectedEnvironment,
         roverId: formattedId,
+        isAuthenticated: true,
       });
     } else {
       setError('INCORRECT ROVER PASSWORD');
