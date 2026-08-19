@@ -1,117 +1,201 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const ROVER_DATABASE = {
-  "ROVER-01": "ASTRA_EXPLORER_ALPHA",
-  "ROVER-02": "ASTRA_VOYAGER_BETA",
-  "ASTRA-X1": "ASTRA_TITAN_GAMMA"
+const VALID_OFFICERS = {
+  'OFFICER-7': 'astra2026',
+  'ADMIN-01': 'secure123',
 };
 
-export default function LandingPage({ onAccessGranted }) {
-  const [roverId, setRoverId] = useState('');
-  const [roverName, setRoverName] = useState('');
-  const [password, setPassword] = useState('');
+const VALID_ROVERS = {
+  'ROVER-01': 'rover123',
+  'ROVER-02': 'rover123',
+  'ASTRA-X1': 'astra123',
+};
+
+export default function LandingPage({ onAuthenticated }) {
   const [step, setStep] = useState(1);
+  const [officerId, setOfficerId] = useState('');
+  const [officerPassword, setOfficerPassword] = useState('');
+  const [selectedEnvironment, setSelectedEnvironment] = useState('');
+  const [roverId, setRoverId] = useState('');
+  const [roverPassword, setRoverPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleIdChange = (e) => {
-    const value = e.target.value.toUpperCase();
-    setRoverId(value);
-    
-    if (ROVER_DATABASE[value]) {
-      setRoverName(ROVER_DATABASE[value]);
-      setError('');
-    } else {
-      setRoverName('');
-    }
+  const handleSelectEnvironment = (env) => {
+    setSelectedEnvironment(env);
+    setError('');
+    setStep(3);
   };
 
-  const handleSelectRover = () => {
-    if (roverName) {
-      setStep(2);
-      setError('');
-    } else {
-      setError('INVALID ROVER IDENTIFIER');
-    }
-  };
+  // KEYBOARD SHORTCUTS FOR F1 (MOON) AND F10 (MARS)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (step === 2) {
+        if (e.key === 'F1') {
+          e.preventDefault();
+          handleSelectEnvironment('MOON');
+        } else if (e.key === 'F10') {
+          e.preventDefault();
+          handleSelectEnvironment('MARS');
+        }
+      }
+    };
 
-  const handleSubmit = (e) => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [step]);
+
+  const handleOfficerLogin = (e) => {
     e.preventDefault();
-    if (!password) {
-      setError('PASSWORD REQUIRED');
-      return;
+    if (VALID_OFFICERS[officerId] && VALID_OFFICERS[officerId] === officerPassword) {
+      setError('');
+      setStep(2);
+    } else {
+      setError('INVALID OFFICER ID OR PASSWORD');
     }
-    onAccessGranted({ roverId, roverName, password });
+  };
+
+  const handleRoverIdSubmit = (e) => {
+    e.preventDefault();
+    const formattedId = roverId.toUpperCase();
+    if (VALID_ROVERS[formattedId]) {
+      setError('');
+      setStep(4);
+    } else {
+      setError('INVALID ROVER ID');
+    }
+  };
+
+  const handleRoverPasswordSubmit = (e) => {
+    e.preventDefault();
+    const formattedId = roverId.toUpperCase();
+    if (VALID_ROVERS[formattedId] === roverPassword) {
+      setError('');
+      onAuthenticated({
+        officerId,
+        environment: selectedEnvironment,
+        roverId: formattedId,
+      });
+    } else {
+      setError('INCORRECT ROVER PASSWORD');
+    }
   };
 
   return (
-    <div style={styles.pageContainer}>
-      <video autoPlay loop muted playsInline style={styles.bgVideo}>
+    <div style={styles.container}>
+      <video autoPlay loop muted style={styles.videoBg}>
         <source src="/assets/videos/space-hero.mp4" type="video/mp4" />
       </video>
+      <div style={styles.overlay} />
 
-      <div style={styles.videoOverlay} />
-
-      <div style={styles.terminalCard}>
-        <div style={styles.cardHeader}>
-          <div style={styles.hudDot} />
-          <span style={styles.cardTitle}>ASTRANAV // ORBITAL LINK</span>
+      <div 
+        style={{ 
+          ...styles.terminalBox, 
+          width: step === 2 ? '85vw' : '380px',
+          height: step === 2 ? '80vh' : 'auto',
+        }}
+      >
+        <div style={styles.logoContainer}>
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/b/bd/Indian_Space_Research_Organisation_Logo.svg" 
+            alt="ISRO Logo" 
+            style={styles.logo} 
+          />
         </div>
 
+        <h1 style={styles.title}>ASTRA_NAV // GATEWAY</h1>
+
+        {error && <div style={styles.errorText}>[!] {error}</div>}
+
+        {/* STEP 1: OFFICER LOGIN */}
         {step === 1 && (
-          <div style={styles.formSection}>
-            <label style={styles.label}>[ SYSTEM_SEARCH ]</label>
+          <form onSubmit={handleOfficerLogin} style={styles.form}>
+            <label style={styles.label}>OFFICER ID</label>
             <input
               type="text"
-              placeholder="ENTER ROVER ID (e.g. ROVER-01)"
-              value={roverId}
-              onChange={handleIdChange}
-              style={styles.inputField}
+              value={officerId}
+              onChange={(e) => setOfficerId(e.target.value.toUpperCase())}
+              placeholder="e.g. OFFICER-7"
+              style={styles.input}
+              required
             />
+            <label style={styles.label}>PASSWORD</label>
+            <input
+              type="password"
+              value={officerPassword}
+              onChange={(e) => setOfficerPassword(e.target.value)}
+              placeholder="••••••••"
+              style={styles.input}
+              required
+            />
+            <button type="submit" style={styles.button}>LOGIN</button>
+          </form>
+        )}
 
-            {roverName && (
-              <div onClick={handleSelectRover} style={styles.roverResultCard}>
-                <div>
-                  <div style={styles.statusBadge}>● ONLINE</div>
-                  <div style={styles.roverNameText}>{roverName}</div>
-                </div>
-                <span style={styles.actionArrow}>SELECT →</span>
+        {/* STEP 2: FULL-SCREEN DEPLOYMENT SELECTION */}
+        {step === 2 && (
+          <div style={styles.fullSelectionWrapper}>
+            <p style={styles.subtext}>SELECT TARGET DEPLOYMENT ENVIRONMENT (USE F1 / F10)</p>
+            <div style={styles.largeCardsContainer}>
+              {/* LUNAR CARD */}
+              <div 
+                style={styles.largeCard} 
+                onClick={() => handleSelectEnvironment('MOON')}
+              >
+                <div style={styles.cardIcon}>🌕</div>
+                <h2 style={styles.cardHeader}>LUNAR SURFACE</h2>
+                <p style={styles.cardSub}>ROVER ON MOON</p>
+                <span style={styles.cardStatus}>SYS STATUS: ACTIVE // READY</span>
+                <button style={styles.largeCardButton}>INITIATE LUNAR LINK [F1]</button>
               </div>
-            )}
 
-            {error && <div style={styles.errorBanner}>{error}</div>}
+              {/* MARTIAN CARD */}
+              <div 
+                style={styles.largeCard} 
+                onClick={() => handleSelectEnvironment('MARS')}
+              >
+                <div style={styles.cardIcon}>🔴</div>
+                <h2 style={styles.cardHeader}>MARTIAN SURFACE</h2>
+                <p style={styles.cardSub}>ROVER ON MARS</p>
+                <span style={styles.cardStatus}>SYS STATUS: ACTIVE // READY</span>
+                <button style={styles.largeCardButton}>INITIATE MARS LINK [F10]</button>
+              </div>
+            </div>
           </div>
         )}
 
-        {step === 2 && (
-          <form onSubmit={handleSubmit} style={styles.formSection}>
-            <div style={styles.connectionBanner}>
-              TARGET: <span style={{ color: '#00ff66' }}>{roverName}</span>
-            </div>
-
-            <label style={styles.label}>[ SET_SESSION_KEY ]</label>
+        {/* STEP 3: ROVER ID ENTRY */}
+        {step === 3 && (
+          <form onSubmit={handleRoverIdSubmit} style={styles.form}>
+            <p style={styles.subtext}>DEPLOYMENT: {selectedEnvironment}</p>
+            <label style={styles.label}>ENTER ROVER ID</label>
             <input
-              type="password"
-              placeholder="ENTER ACCESS PASSWORD"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={styles.inputField}
+              type="text"
+              value={roverId}
+              onChange={(e) => setRoverId(e.target.value.toUpperCase())}
+              placeholder="e.g. ROVER-01"
+              style={styles.input}
+              required
               autoFocus
             />
+            <button type="submit" style={styles.button}>NEXT</button>
+          </form>
+        )}
 
-            {error && <div style={styles.errorBanner}>{error}</div>}
-
-            <div style={styles.buttonGroup}>
-              <button 
-                type="button" 
-                onClick={() => setStep(1)} 
-                style={styles.backButton}
-              >
-                BACK
-              </button>
-              <button type="submit" style={styles.submitButton}>
-                INITIALIZE LINK
-              </button>
-            </div>
+        {/* STEP 4: ROVER PASSWORD ENTRY */}
+        {step === 4 && (
+          <form onSubmit={handleRoverPasswordSubmit} style={styles.form}>
+            <p style={styles.subtext}>ROVER: {roverId}</p>
+            <label style={styles.label}>ENTER ROVER PASSWORD</label>
+            <input
+              type="password"
+              value={roverPassword}
+              onChange={(e) => setRoverPassword(e.target.value)}
+              placeholder="••••••••"
+              style={styles.input}
+              required
+              autoFocus
+            />
+            <button type="submit" style={styles.button}>LAUNCH TELEMETRY</button>
           </form>
         )}
       </div>
@@ -120,143 +204,157 @@ export default function LandingPage({ onAccessGranted }) {
 }
 
 const styles = {
-  pageContainer: {
+  container: {
     position: 'relative',
     width: '100vw',
     height: '100vh',
     display: 'flex',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+    color: '#00ff66',
+    fontFamily: 'monospace',
     overflow: 'hidden',
-    fontFamily: '"Courier New", Consolas, monospace',
   },
-  bgVideo: {
+  videoBg: {
     position: 'absolute',
-    top: 0,
-    left: 0,
     width: '100%',
     height: '100%',
     objectFit: 'cover',
     zIndex: 1,
   },
-  videoOverlay: {
+  overlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
     width: '100%',
     height: '100%',
-    background: 'radial-gradient(circle, rgba(5,15,25,0.6) 0%, rgba(2,6,12,0.88) 100%)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     zIndex: 2,
   },
-  terminalCard: {
+  terminalBox: {
     position: 'relative',
     zIndex: 3,
-    width: '420px',
-    padding: '28px',
-    background: 'rgba(6, 18, 22, 0.85)',
-    border: '1px solid rgba(0, 255, 102, 0.4)',
-    borderRadius: '6px',
-    boxShadow: '0 0 30px rgba(0, 255, 102, 0.15)',
-    backdropFilter: 'blur(10px)',
-    color: '#00ff66',
-  },
-  cardHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    marginBottom: '24px',
-    paddingBottom: '12px',
-    borderBottom: '1px solid rgba(0, 255, 102, 0.2)',
-  },
-  hudDot: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-    background: '#00ff66',
-    boxShadow: '0 0 8px #00ff66',
-  },
-  cardTitle: {
-    fontSize: '14px',
-    fontWeight: 'bold',
-    letterSpacing: '2px',
-  },
-  formSection: {
+    border: '1px solid #00ff66',
+    padding: '2rem',
+    borderRadius: '12px',
+    backgroundColor: 'rgba(3, 10, 3, 0.9)',
+    boxShadow: '0 0 25px rgba(0, 255, 102, 0.25)',
     display: 'flex',
     flexDirection: 'column',
-    gap: '14px',
+    boxSizing: 'border-box',
+    transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
   },
-  label: {
-    fontSize: '11px',
-    color: '#a0e0b0',
+  logoContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '0.8rem',
+  },
+  logo: {
+    height: '55px',
+    width: 'auto',
+    filter: 'drop-shadow(0 0 6px rgba(0, 255, 102, 0.6))',
+  },
+  title: {
+    fontSize: '1.2rem',
+    marginBottom: '1rem',
+    textAlign: 'center',
+    letterSpacing: '2px',
+  },
+  subtext: {
+    fontSize: '0.9rem',
+    marginBottom: '1.5rem',
+    textAlign: 'center',
+    color: '#00cc52',
     letterSpacing: '1px',
   },
-  inputField: {
-    padding: '12px 14px',
-    background: 'rgba(2, 10, 12, 0.9)',
-    border: '1px solid #00ff66',
-    borderRadius: '3px',
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.8rem',
+  },
+  fullSelectionWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    justifyContent: 'center',
+  },
+  largeCardsContainer: {
+    display: 'flex',
+    gap: '2rem',
+    flex: 1,
+    paddingBottom: '1rem',
+  },
+  largeCard: {
+    flex: 1,
+    border: '2px solid #00ff66',
+    borderRadius: '10px',
+    padding: '2rem',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 25, 5, 0.7)',
+    cursor: 'pointer',
+    boxShadow: 'inset 0 0 15px rgba(0, 255, 102, 0.1)',
+    transition: 'transform 0.2s ease, boxShadow 0.2s ease',
+  },
+  cardIcon: {
+    fontSize: '5rem',
+    marginBottom: '1rem',
+  },
+  cardHeader: {
+    fontSize: '1.4rem',
     color: '#00ff66',
-    fontFamily: '"Courier New", Consolas, monospace',
-    fontSize: '13px',
+    margin: '0.4rem 0',
+    letterSpacing: '2px',
+  },
+  cardSub: {
+    fontSize: '0.95rem',
+    color: '#00cc52',
+    marginBottom: '1rem',
+  },
+  cardStatus: {
+    fontSize: '0.75rem',
+    color: '#008833',
+    marginBottom: '2rem',
+  },
+  largeCardButton: {
+    backgroundColor: '#00ff66',
+    color: '#000',
+    border: 'none',
+    padding: '0.8rem 1.5rem',
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+    cursor: 'pointer',
+    borderRadius: '4px',
+    width: '80%',
+    letterSpacing: '1px',
+  },
+  label: {
+    fontSize: '0.8rem',
+  },
+  input: {
+    backgroundColor: '#000',
+    border: '1px solid #00ff66',
+    color: '#00ff66',
+    padding: '0.6rem',
+    borderRadius: '4px',
+    fontFamily: 'monospace',
     outline: 'none',
   },
-  roverResultCard: {
-    padding: '12px 16px',
-    background: 'rgba(0, 255, 102, 0.08)',
-    border: '1px dashed #00ff66',
-    borderRadius: '3px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  statusBadge: {
-    fontSize: '10px',
-    color: '#00ff66',
-    marginBottom: '2px',
-  },
-  roverNameText: {
-    fontSize: '14px',
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  actionArrow: {
-    fontSize: '12px',
-    fontWeight: 'bold',
-  },
-  connectionBanner: {
-    fontSize: '12px',
-    padding: '10px',
-    background: 'rgba(0, 255, 102, 0.05)',
-    borderLeft: '3px solid #00ff66',
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '10px',
-    marginTop: '10px',
-  },
-  backButton: {
-    padding: '12px',
-    background: 'transparent',
-    border: '1px solid #00ff66',
-    color: '#00ff66',
-    fontFamily: '"Courier New", Consolas, monospace',
-    fontSize: '12px',
-    cursor: 'pointer',
-  },
-  submitButton: {
-    flex: 1,
-    padding: '12px',
-    background: '#00ff66',
+  button: {
+    backgroundColor: '#00ff66',
+    color: '#000',
     border: 'none',
-    color: '#02060c',
+    padding: '0.6rem',
     fontWeight: 'bold',
-    fontFamily: '"Courier New", Consolas, monospace',
-    fontSize: '12px',
     cursor: 'pointer',
+    marginTop: '0.5rem',
+    borderRadius: '4px',
   },
-  errorBanner: {
-    fontSize: '11px',
-    color: '#ff4444',
-  }
+  errorText: {
+    color: '#ff3333',
+    fontSize: '0.75rem',
+    marginBottom: '1rem',
+    textAlign: 'center',
+  },
 };

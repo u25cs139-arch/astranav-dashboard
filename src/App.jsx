@@ -8,7 +8,7 @@ function App() {
 
   // If user is not authenticated/connected, show the LandingPage
   if (!session) {
-    return <LandingPage onAccessGranted={(data) => setSession(data)} />;
+    return <LandingPage onAuthenticated={(data) => setSession(data)} />;
   }
 
   // Once access is granted, load the 3D Rover Simulation
