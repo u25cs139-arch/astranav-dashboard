@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { SimulationProvider } from './context/SimulationContext';
 import LandingPage from './components/1-auth/LandingPage';
+import ModuleSelection from './components/navigation/ModuleSelection';
 import MoonStimulation from './components/moon/MoonStimulation';
 import MarsStimulation from './components/Mars/MarsStimulation';
 
 function App() {
   const [session, setSession] = useState(null);
   const [selectedEnv, setSelectedEnv] = useState(null);
+  const [activeModule, setActiveModule] = useState(null);
 
   // Set the environment immediately when session completes authentication
   const handleAuthenticated = (data) => {
@@ -33,19 +35,35 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [session]);
 
+  // Step 1: Not Authenticated -> Show Landing Page
   if (!session) {
     return <LandingPage onAuthenticated={handleAuthenticated} />;
   }
 
-  if (selectedEnv === 'moon' || session?.environment?.toLowerCase() === 'moon') {
+  // Step 2: Authenticated -> Show Options Tab (Live Visuals, Live Navigation, etc.)
+  if (!activeModule) {
+    return (
+      <ModuleSelection 
+        selectedTarget={selectedEnv || session?.environment}
+        roverId={session?.roverId || 'ROVER-01'}
+        onSelectModule={(module) => setActiveModule(module)}
+        onBack={() => {
+          setSession(null);
+          setSelectedEnv(null);
+        }}
+      />
+    );
+  }
+
+  // Step 3: Live Navigation Clicked -> Render 3D Simulation
+  const currentEnv = selectedEnv || session?.environment?.toLowerCase();
+
+  if (activeModule === 'LIVE_NAVIGATION' && currentEnv === 'moon') {
     return (
       <SimulationProvider>
         <div style={{ position: 'relative' }}>
           <button 
-            onClick={() => {
-              setSession(null);
-              setSelectedEnv(null);
-            }}
+            onClick={() => setActiveModule(null)}
             style={{ 
               position: 'absolute', 
               top: 15, 
@@ -59,7 +77,7 @@ function App() {
               cursor: 'pointer' 
             }}
           >
-            ← EXIT TO GATEWAY
+            ← BACK TO CONTROL PANEL
           </button>
           <MoonStimulation session={session} />
         </div>
@@ -67,15 +85,12 @@ function App() {
     );
   }
 
-  if (selectedEnv === 'mars' || session?.environment?.toLowerCase() === 'mars') {
+  if (activeModule === 'LIVE_NAVIGATION' && currentEnv === 'mars') {
     return (
       <SimulationProvider>
         <div style={{ position: 'relative' }}>
           <button 
-            onClick={() => {
-              setSession(null);
-              setSelectedEnv(null);
-            }}
+            onClick={() => setActiveModule(null)}
             style={{ 
               position: 'absolute', 
               top: 15, 
@@ -89,7 +104,7 @@ function App() {
               cursor: 'pointer' 
             }}
           >
-            ← EXIT TO GATEWAY
+            ← BACK TO CONTROL PANEL
           </button>
           <MarsStimulation session={session} />
         </div>
