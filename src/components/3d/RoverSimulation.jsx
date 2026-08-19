@@ -1,33 +1,154 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import './RoverSimulation.css';
 
 const OBSTACLES = [
-  { x: 0, z: 0, radius: 9, type: 'CRATER', name: 'CRATER_ALPHA' },
+  { x: 0, z: 0, radius: 8, type: 'CRATER', name: 'CRATER_ALPHA' },
   { x: -18, z: -12, radius: 6, type: 'CRATER', name: 'CRATER_BETA' },
-  { x: 15, z: 12, radius: 5, type: 'CRATER', name: 'CRATER_GAMMA' },
-  { x: 0, z: 12, radius: 2.5, type: 'ROCK', name: 'BOULDER_CLUSTER' },
-  { x: -10, z: -2, radius: 2.0, type: 'ROCK', name: 'BASALT_ESCARP' }
+  { x: 25, z: -22, radius: 7.5, type: 'CRATER', name: 'CRATER_EPSILON' },
+  { x: -32, z: -28, radius: 6.5, type: 'CRATER', name: 'CRATER_ZETA' },
+  { x: 12, z: -35, radius: 6.0, type: 'CRATER', name: 'CRATER_THETA' },
+  { x: 18, z: 15, radius: 12, height: 4.5, type: 'HILL', name: 'MOUNT_PROSPECT' },
+  { x: -25, z: 20, radius: 10, height: 4.0, type: 'HILL', name: 'WEST_RIDGE_DOME' },
+  { x: 35, z: -5, radius: 9, height: 3.5, type: 'HILL', name: 'EAST_HILL' },
+  { x: -12, z: 30, radius: 11, height: 4.2, type: 'HILL', name: 'NORTH_PEAK' },
+  { x: -10, z: -2, radius: 2.0, type: 'ROCK', name: 'BASALT_ESCARP' },
+  { x: 20, z: -5, radius: 2.2, type: 'ROCK', name: 'RIDGE_ROCK' }
 ];
 
-// --- A* SHORTEST PATH FINDER ALGORITHM ---
+function getTerrainHeight(x, z) {
+  let heightVal =
+    Math.sin(x * 0.06) * Math.cos(z * 0.06) * 1.8 +
+    Math.sin(x * 0.2) * Math.sin(z * 0.18) * 0.5;
+
+  const craters = OBSTACLES.filter(o => o.type === 'CRATER');
+  const hills = OBSTACLES.filter(o => o.type === 'HILL');
+
+  craters.forEach(c => {
+    let dist = Math.hypot(x - c.x, z - c.z);
+    if (dist < c.radius) {
+      heightVal -= Math.cos((dist / c.radius) * Math.PI * 0.5) * 3.6;
+    } else if (dist < c.radius * 1.35) {
+      heightVal += Math.sin(((dist - c.radius) / (c.radius * 0.35)) * Math.PI) * 0.75;
+    }
+  });
+
+  hills.forEach(h => {
+    let dist = Math.hypot(x - h.x, z - h.z);
+    if (dist < h.radius) {
+      heightVal += Math.cos((dist / h.radius) * Math.PI * 0.5) * (h.height || 4.0);
+    }
+  });
+
+  return heightVal;
+}
+
+function getTerrainNormal(x, z) {
+  const eps = 0.25;
+  const hL = getTerrainHeight(x - eps, z);
+  const hR = getTerrainHeight(x + eps, z);
+  const hD = getTerrainHeight(x, z - eps);
+  const hU = getTerrainHeight(x, z + eps);
+
+  return new THREE.Vector3(hL - hR, 2 * eps, hD - hU).normalize();
+}
+
+function createHighResLunarMaps() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 2048;
+  canvas.height = 2048;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#666666';
+  ctx.fillRect(0, 0, 2048, 2048);
+
+  const imgData = ctx.getImageData(0, 0, 2048, 2048);
+  const data = imgData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const val = 100 + Math.floor(Math.random() * 90);
+    data[i] = val;
+    data[i + 1] = val;
+    data[i + 2] = val;
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  for (let i = 0; i < 40000; i++) {
+    const x = Math.random() * 2048;
+    const y = Math.random() * 2048;
+    const r = Math.random() * 2.5;
+    ctx.fillStyle = Math.random() > 0.5 ? '#111111' : '#ffffff';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(24, 24);
+  return texture;
+}
+
+// 🌍 Procedural Earth Texture Creator
+function createEarthTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Deep Blue Oceans
+  ctx.fillStyle = '#0a2342';
+  ctx.fillRect(0, 0, 1024, 512);
+
+  // Continents (Green/Brown Shapes)
+  ctx.fillStyle = '#2d5a27';
+  
+  const drawContinent = (cx, cy, r) => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  // North/South America
+  drawContinent(250, 180, 90);
+  drawContinent(320, 320, 80);
+  // Europe & Africa
+  drawContinent(520, 160, 70);
+  drawContinent(540, 280, 100);
+  // Asia & Australia
+  drawContinent(720, 160, 130);
+  drawContinent(820, 340, 60);
+
+  // Clouds Layer
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+  for (let i = 0; i < 40; i++) {
+    const x = Math.random() * 1024;
+    const y = Math.random() * 512;
+    const rx = 40 + Math.random() * 80;
+    const ry = 15 + Math.random() * 30;
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, Math.random() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  return new THREE.CanvasTexture(canvas);
+}
+
 function findAStarPath(startWorld, targetWorld, obstacles) {
-  const GRID_SIZE = 80; 
+  const GRID_SIZE = 120;
   const MAP_MIN = -60;
   const MAP_MAX = 60;
   const CELL_SIZE = (MAP_MAX - MAP_MIN) / GRID_SIZE;
 
-  const toGrid = (val) => Math.floor((val - MAP_MIN) / CELL_SIZE);
+  const toGrid = (val) => Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((val - MAP_MIN) / CELL_SIZE)));
   const toWorld = (idx) => MAP_MIN + (idx + 0.5) * CELL_SIZE;
 
-  const startG = { 
-    x: Math.max(0, Math.min(GRID_SIZE - 1, toGrid(startWorld.x))), 
-    z: Math.max(0, Math.min(GRID_SIZE - 1, toGrid(startWorld.z))) 
-  };
-  const targetG = { 
-    x: Math.max(0, Math.min(GRID_SIZE - 1, toGrid(targetWorld.x))), 
-    z: Math.max(0, Math.min(GRID_SIZE - 1, toGrid(targetWorld.z))) 
-  };
+  const startG = { x: toGrid(startWorld.x), z: toGrid(startWorld.z) };
+  const targetG = { x: toGrid(targetWorld.x), z: toGrid(targetWorld.z) };
 
   const grid = Array.from({ length: GRID_SIZE }, () => new Array(GRID_SIZE).fill(false));
   for (let r = 0; r < GRID_SIZE; r++) {
@@ -35,17 +156,13 @@ function findAStarPath(startWorld, targetWorld, obstacles) {
       const wx = toWorld(c);
       const wz = toWorld(r);
       for (let obs of obstacles) {
-        const dist = Math.hypot(wx - obs.x, wz - obs.z);
-        if (dist < obs.radius + 2.8) {
+        if (Math.hypot(wx - obs.x, wz - obs.z) < obs.radius + 2.2) {
           grid[r][c] = true;
           break;
         }
       }
     }
   }
-
-  grid[startG.z][startG.x] = false;
-  grid[targetG.z][targetG.x] = false;
 
   const openSet = [];
   const closedSet = new Set();
@@ -66,10 +183,13 @@ function findAStarPath(startWorld, targetWorld, obstacles) {
   nodeMap.set(key(startG.x, startG.z), startNode);
 
   let foundNode = null;
+  let closestNode = startNode;
 
   while (openSet.length > 0) {
     openSet.sort((a, b) => a.f - b.f);
     const current = openSet.shift();
+
+    if (current.h < closestNode.h) closestNode = current;
 
     if (current.x === targetG.x && current.z === targetG.z) {
       foundNode = current;
@@ -114,39 +234,45 @@ function findAStarPath(startWorld, targetWorld, obstacles) {
     }
   }
 
+  const finalTarget = foundNode || closestNode;
   const path = [];
-  let curr = foundNode;
+  let curr = finalTarget;
   while (curr) {
-    path.push(new THREE.Vector3(toWorld(curr.x), 0.8, toWorld(curr.z)));
+    const wx = toWorld(curr.x);
+    const wz = toWorld(curr.z);
+    path.push(new THREE.Vector3(wx, getTerrainHeight(wx, wz) + 0.4, wz));
     curr = curr.parent;
   }
   path.reverse();
 
-  if (path.length > 0) {
-    path[path.length - 1] = targetWorld.clone();
-  } else {
-    path.push(targetWorld.clone());
-  }
+  if (path.length > 1) path.shift();
+  path.push(new THREE.Vector3(targetWorld.x, getTerrainHeight(targetWorld.x, targetWorld.z) + 0.4, targetWorld.z));
 
   return path;
 }
 
 export default function RoverSimulation() {
   const mountRef = useRef(null);
-  const targetPosRef = useRef(new THREE.Vector3(-24, 0.8, -26));
-  const roverPosRef = useRef(new THREE.Vector3(0, 0.8, 28));
+  const targetPosRef = useRef(new THREE.Vector3(-24, getTerrainHeight(-24, -26) + 0.4, -26));
+  const roverPosRef = useRef(new THREE.Vector3(0, getTerrainHeight(0, 28) + 0.4, 28));
   const pathWaypointsRef = useRef([]);
+
+  const targetZoomRef = useRef(1.0);
+  const currentZoomRef = useRef(1.0);
+  const cameraAnglesRef = useRef({ azimuth: 0.5, polar: 1.1 });
+  const panOffsetRef = useRef(new THREE.Vector3(0, 0, 0));
+
+  const isDraggingRef = useRef(false);
+  const dragButtonRef = useRef(0);
+  const previousMousePosRef = useRef({ x: 0, y: 0 });
 
   const [inputX, setInputX] = useState('-24.0');
   const [inputZ, setInputZ] = useState('-26.0');
-  const [isMapOpen, setIsMapOpen] = useState(false);
 
   const [telemetry, setTelemetry] = useState({
-    status: 'ASTAR_OPTIMAL',
-    decision: 'A* ALGORITHM // SHORTEST_PATH_ACTIVE',
-    coords: 'X: 0.0 | Y: 0.8 | Z: 28.0',
+    status: 'ASTAR_NAV',
+    coords: 'X: 0.0 | Y: 0.4 | Z: 28.0',
     targetCoords: 'X: -24.0 | Z: -26.0',
-    hazardDetected: 'NONE',
     speed: '1.2 m/s',
     distToTarget: '63.0m'
   });
@@ -159,18 +285,12 @@ export default function RoverSimulation() {
       const clampedX = Math.max(-50, Math.min(50, x));
       const clampedZ = Math.max(-50, Math.min(50, z));
 
-      targetPosRef.current.set(clampedX, 0.8, clampedZ);
+      targetPosRef.current.set(clampedX, getTerrainHeight(clampedX, clampedZ) + 0.4, clampedZ);
       setInputX(clampedX.toFixed(1));
       setInputZ(clampedZ.toFixed(1));
 
-      // Recalculate A* Shortest Path immediately
       pathWaypointsRef.current = findAStarPath(roverPosRef.current, targetPosRef.current, OBSTACLES);
     }
-  };
-
-  const handleSetTarget = (e) => {
-    e.preventDefault();
-    updateTarget(inputX, inputZ);
   };
 
   useEffect(() => {
@@ -179,156 +299,286 @@ export default function RoverSimulation() {
     const height = currentRef.clientHeight;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x010302);
+    scene.background = new THREE.Color(0x000000); // Deep Pitch Black Space
+    scene.fog = new THREE.FogExp2(0x000000, 0.003);
 
-    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1200);
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
+    renderer.toneMappingExposure = 1.3;
     currentRef.appendChild(renderer.domElement);
 
-    // Stars
-    const starsGeo = new THREE.BufferGeometry();
-    const starCount = 1200;
-    const starPositions = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount * 3; i++) {
-      starPositions[i] = (Math.random() - 0.5) * 400;
-    }
-    starsGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({ color: 0x00ff66, size: 0.6, transparent: true, opacity: 0.6 })));
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    composer.addPass(new UnrealBloomPass(new THREE.Vector2(width, height), 0.7, 0.3, 0.8));
+    composer.addPass(new OutputPass());
 
-    // Lights
-    scene.add(new THREE.AmbientLight(0x0a1a0f, 0.7));
-    const sunLight = new THREE.DirectionalLight(0xe6fffa, 3.2);
-    sunLight.position.set(50, 70, -30);
+    // --- 🌌 1. STARFIELD SYSTEM (Taare) ---
+    const starCount = 4500;
+    const starGeo = new THREE.BufferGeometry();
+    const starPos = new Float32Array(starCount * 3);
+
+    for (let i = 0; i < starCount * 3; i += 3) {
+      const radius = 600 + Math.random() * 200;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos((Math.random() * 2) - 1);
+
+      starPos[i] = radius * Math.sin(phi) * Math.cos(theta);
+      starPos[i + 1] = Math.abs(radius * Math.cos(phi)) + 10; // Keep above horizon
+      starPos[i + 2] = radius * Math.sin(phi) * Math.sin(theta);
+    }
+
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 1.3,
+      transparent: true,
+      opacity: 0.85
+    });
+    const starField = new THREE.Points(starGeo, starMat);
+    scene.add(starField);
+
+    // --- 🌍 2. PLANET EARTH IN SKY ---
+    const earthGeo = new THREE.SphereGeometry(18, 64, 64);
+    const earthMat = new THREE.MeshStandardMaterial({
+      map: createEarthTexture(),
+      roughness: 0.7,
+      metalness: 0.1
+    });
+    const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+    earthMesh.position.set(-220, 110, -280);
+    earthMesh.rotation.z = 0.4;
+    scene.add(earthMesh);
+
+    // --- ☀️ 3. SUN SPHERE ---
+    const sunLight = new THREE.DirectionalLight(0xfff8ee, 5.5);
+    sunLight.position.set(120, 70, -150);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.bias = -0.0002;
     scene.add(sunLight);
 
+    const sunGeo = new THREE.SphereGeometry(12, 32, 32);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+    sunMesh.position.copy(sunLight.position).multiplyScalar(2.5);
+    scene.add(sunMesh);
+
+    scene.add(new THREE.AmbientLight(0x1a2235, 0.45)); // Soft blue space ambient reflect
+
+    const domElement = renderer.domElement;
+    const handleWheel = (event) => {
+      event.preventDefault();
+      targetZoomRef.current = Math.min(Math.max(targetZoomRef.current + event.deltaY * 0.0015, 0.2), 3.0);
+    };
+    domElement.addEventListener('wheel', handleWheel, { passive: false });
+
+    const handleContextMenu = (e) => e.preventDefault();
+    domElement.addEventListener('contextmenu', handleContextMenu);
+
+    const handlePointerDown = (event) => {
+      isDraggingRef.current = false;
+      dragButtonRef.current = event.button;
+      previousMousePosRef.current = { x: event.clientX, y: event.clientY };
+
+      const onPointerMove = (moveEvent) => {
+        const deltaX = moveEvent.clientX - previousMousePosRef.current.x;
+        const deltaY = moveEvent.clientY - previousMousePosRef.current.y;
+
+        if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) isDraggingRef.current = true;
+
+        if (dragButtonRef.current === 2 || moveEvent.shiftKey) {
+          const panSpeed = 0.05 * currentZoomRef.current;
+          const { azimuth } = cameraAnglesRef.current;
+          const sideVector = new THREE.Vector3(Math.cos(azimuth), 0, -Math.sin(azimuth));
+          const forwardVector = new THREE.Vector3(Math.sin(azimuth), 0, Math.cos(azimuth));
+
+          panOffsetRef.current.addScaledVector(sideVector, -deltaX * panSpeed);
+          panOffsetRef.current.addScaledVector(forwardVector, deltaY * panSpeed);
+        } else {
+          cameraAnglesRef.current.azimuth -= deltaX * 0.006;
+          cameraAnglesRef.current.polar = Math.max(0.05, Math.min(Math.PI / 2 - 0.01, cameraAnglesRef.current.polar - deltaY * 0.006));
+        }
+
+        previousMousePosRef.current = { x: moveEvent.clientX, y: moveEvent.clientY };
+      };
+
+      const onPointerUp = (upEvent) => {
+        domElement.removeEventListener('pointermove', onPointerMove);
+        domElement.removeEventListener('pointerup', onPointerUp);
+
+        if (!isDraggingRef.current && upEvent.button === 0) {
+          const rect = domElement.getBoundingClientRect();
+          const mouse = new THREE.Vector2(
+            ((upEvent.clientX - rect.left) / rect.width) * 2 - 1,
+            -((upEvent.clientY - rect.top) / rect.height) * 2 + 1
+          );
+          const raycaster = new THREE.Raycaster();
+          raycaster.setFromCamera(mouse, camera);
+          const intersects = raycaster.intersectObject(terrain);
+          if (intersects.length > 0) {
+            updateTarget(intersects[0].point.x, intersects[0].point.z);
+          }
+        }
+      };
+
+      domElement.addEventListener('pointermove', onPointerMove);
+      domElement.addEventListener('pointerup', onPointerUp);
+    };
+    domElement.addEventListener('pointerdown', handlePointerDown);
+
     // Terrain
-    const terrainGeo = new THREE.PlaneGeometry(120, 120, 128, 128);
+    const regolithTexture = createHighResLunarMaps();
+    const terrainGeo = new THREE.PlaneGeometry(130, 130, 250, 250);
     terrainGeo.rotateX(-Math.PI / 2);
     const pos = terrainGeo.attributes.position;
-    const craters = OBSTACLES.filter(o => o.type === 'CRATER');
 
     for (let i = 0; i < pos.count; i++) {
       let x = pos.getX(i);
       let z = pos.getZ(i);
-      let heightVal = Math.sin(x * 0.12) * Math.cos(z * 0.12) * 0.7 + (Math.random() * 0.08);
-
-      craters.forEach(c => {
-        let dist = Math.hypot(x - c.x, z - c.z);
-        if (dist < c.radius) {
-          heightVal -= Math.cos((dist / c.radius) * Math.PI * 0.5) * 3.5;
-        } else if (dist < c.radius * 1.35) {
-          heightVal += Math.sin(((dist - c.radius) / (c.radius * 0.35)) * Math.PI) * 0.7;
-        }
-      });
-      pos.setY(i, heightVal);
+      pos.setY(i, getTerrainHeight(x, z));
     }
     terrainGeo.computeVertexNormals();
-    const terrain = new THREE.Mesh(terrainGeo, new THREE.MeshStandardMaterial({ color: 0x334139, roughness: 0.9, metalness: 0.1 }));
+
+    const terrainMat = new THREE.MeshStandardMaterial({
+      map: regolithTexture,
+      bumpMap: regolithTexture,
+      bumpScale: 0.35,
+      roughness: 0.85,
+      metalness: 0.15,
+      color: 0x777777
+    });
+    const terrain = new THREE.Mesh(terrainGeo, terrainMat);
     terrain.receiveShadow = true;
+    terrain.castShadow = true;
     scene.add(terrain);
 
-    // Rocks
-    const rockMat = new THREE.MeshStandardMaterial({ color: 0x1f2923, roughness: 0.95 });
-    OBSTACLES.filter(o => o.type === 'ROCK').forEach(r => {
-      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(r.radius, 1), rockMat);
-      rock.position.set(r.x, r.radius * 0.5, r.z);
-      rock.castShadow = true;
-      rock.receiveShadow = true;
-      scene.add(rock);
+    // Rocks Scatter
+    const boulderMat = new THREE.MeshStandardMaterial({
+      color: 0x555555,
+      bumpMap: regolithTexture,
+      bumpScale: 0.4,
+      roughness: 0.9,
+      metalness: 0.1
     });
 
-    // Beacon Pin
-    const targetMarker = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.12, 7, 8),
-      new THREE.MeshStandardMaterial({ color: 0x00ff66, emissive: 0x00ff66, emissiveIntensity: 0.8 })
-    );
-    scene.add(targetMarker);
+    const rockScatterGeo = new THREE.DodecahedronGeometry(1, 2);
+    const instancedRocks = new THREE.InstancedMesh(rockScatterGeo, boulderMat, 350);
+    const dummy = new THREE.Object3D();
 
-    // Dynamic A* Path Line
-    const pathLineMat = new THREE.LineBasicMaterial({ color: 0x00ff66, linewidth: 3 });
-    const pathLineGeo = new THREE.BufferGeometry();
-    const pathLine = new THREE.Line(pathLineGeo, pathLineMat);
+    for (let i = 0; i < 350; i++) {
+      let rx = (Math.random() - 0.5) * 115;
+      let rz = (Math.random() - 0.5) * 115;
+      let scale = 0.25 + Math.random() * 0.85;
+      let ry = getTerrainHeight(rx, rz);
+
+      dummy.position.set(rx, ry + scale * 0.1, rz);
+      dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      dummy.scale.set(scale, scale * (0.6 + Math.random() * 0.4), scale);
+      dummy.updateMatrix();
+
+      instancedRocks.setMatrixAt(i, dummy.matrix);
+    }
+    instancedRocks.castShadow = true;
+    instancedRocks.receiveShadow = true;
+    scene.add(instancedRocks);
+
+    // Target Beam
+    const targetGroup = new THREE.Group();
+    const beamGeo = new THREE.CylinderGeometry(0.1, 2.2, 22, 16, 1, true);
+    const beamMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+    const beamMesh = new THREE.Mesh(beamGeo, beamMat);
+    beamMesh.position.y = 11;
+    targetGroup.add(beamMesh);
+
+    const ringGeo = new THREE.RingGeometry(0.5, 2.5, 32);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.position.y = 0.05;
+    targetGroup.add(ringMesh);
+    scene.add(targetGroup);
+
+    // Path Line
+    const pathLineMat = new THREE.LineBasicMaterial({ color: 0x00ffaa, linewidth: 3 });
+    const pathLine = new THREE.Line(new THREE.BufferGeometry(), pathLineMat);
     scene.add(pathLine);
 
-    // Raycaster for 3D Click
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-    const handlePointerDown = (event) => {
-      if (isMapOpen) return;
-      const rect = renderer.domElement.getBoundingClientRect();
-      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObject(terrain);
-      if (intersects.length > 0) {
-        updateTarget(intersects[0].point.x, intersects[0].point.z);
-      }
-    };
-    renderer.domElement.addEventListener('pointerdown', handlePointerDown);
-
-    // Rover Setup
+    // Rover Vehicle Model
     const roverGroup = new THREE.Group();
-    const chassis = new THREE.Mesh(
-      new THREE.BoxGeometry(2.4, 0.9, 3.2),
-      new THREE.MeshStandardMaterial({ color: 0x0d2818, metalness: 0.8, roughness: 0.3 })
-    );
-    chassis.position.y = 1.1;
-    chassis.castShadow = true;
-    roverGroup.add(chassis);
+    const roverBody = new THREE.Group();
+    roverGroup.add(roverBody);
 
-    const solarPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(2.8, 0.05, 3.4),
-      new THREE.MeshStandardMaterial({ color: 0x00ff66, metalness: 0.9, roughness: 0.1, emissive: 0x00ff66, emissiveIntensity: 0.2 })
-    );
-    solarPanel.position.set(0, 1.58, 0);
-    solarPanel.castShadow = true;
-    roverGroup.add(solarPanel);
+    const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.95, roughness: 0.2 });
+    const goldFoilMat = new THREE.MeshStandardMaterial({ color: 0xe5ba33, metalness: 0.9, roughness: 0.25 });
+    const emissiveMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
 
-    const mast = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.08, 0.08, 1.6, 12),
-      new THREE.MeshStandardMaterial({ color: 0x224433, metalness: 0.8, roughness: 0.3 })
-    );
-    mast.position.set(0.7, 2.3, -1.0);
-    roverGroup.add(mast);
+    const chassisMesh = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.7, 3.2), goldFoilMat);
+    chassisMesh.position.y = 0.5;
+    chassisMesh.castShadow = true;
+    roverBody.add(chassisMesh);
 
-    const wheelGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.35, 18);
+    const solarMesh = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.04, 3.4), darkMetalMat);
+    solarMesh.position.set(0, 0.88, 0);
+    solarMesh.castShadow = true;
+    roverBody.add(solarMesh);
+
+    const frontHeadlight = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, 0.3), emissiveMat);
+    frontHeadlight.position.set(0, 0.7, 1.6);
+    roverBody.add(frontHeadlight);
+
+    const wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.35, 24);
     wheelGeo.rotateZ(Math.PI / 2);
-    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x08140c, roughness: 0.8 });
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5, metalness: 0.8 });
+
+    const wheelPivots = [];
     const wheelMeshes = [];
-    [
-      { x: -1.5, y: 0.45, z: 1.2 }, { x: 1.5, y: 0.45, z: 1.2 },
-      { x: -1.5, y: 0.45, z: 0 },   { x: 1.5, y: 0.45, z: 0 },
-      { x: -1.5, y: 0.45, z: -1.2 },{ x: 1.5, y: 0.45, z: -1.2 }
-    ].forEach(offset => {
-      const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-      wheel.position.set(offset.x, offset.y, offset.z);
-      wheel.castShadow = true;
-      roverGroup.add(wheel);
-      wheelMeshes.push(wheel);
+
+    const wheelPositions = [
+      { x: -1.3, y: 0.42, z: 1.2, isSteering: true },
+      { x: 1.3, y: 0.42, z: 1.2, isSteering: true },
+      { x: -1.3, y: 0.42, z: 0.0, isSteering: false },
+      { x: 1.3, y: 0.42, z: 0.0, isSteering: false },
+      { x: -1.3, y: 0.42, z: -1.2, isSteering: true },
+      { x: 1.3, y: 0.42, z: -1.2, isSteering: true }
+    ];
+
+    wheelPositions.forEach(pos => {
+      const pivot = new THREE.Group();
+      pivot.position.set(pos.x, pos.y, pos.z);
+
+      const w = new THREE.Mesh(wheelGeo, wheelMat);
+      w.castShadow = true;
+      pivot.add(w);
+
+      roverBody.add(pivot);
+      wheelPivots.push({ pivot, isSteering: pos.isSteering });
+      wheelMeshes.push(w);
     });
 
     roverGroup.position.copy(roverPosRef.current);
     scene.add(roverGroup);
 
-    // Initial Path Calculation
     pathWaypointsRef.current = findAStarPath(roverPosRef.current, targetPosRef.current, OBSTACLES);
 
-    let currentHeading = new THREE.Vector3(0, 0, -1).normalize();
-    const moveSpeed = 0.1;
+    let currentHeading = new THREE.Vector3(0, 0, -1);
+    const moveSpeed = 0.11;
 
     const animate = () => {
       requestAnimationFrame(animate);
 
-      targetMarker.position.copy(targetPosRef.current);
+      // Earth rotation animation in space
+      earthMesh.rotation.y += 0.0005;
+
+      targetPosRef.current.y = getTerrainHeight(targetPosRef.current.x, targetPosRef.current.z);
+      targetGroup.position.copy(targetPosRef.current);
+      beamMesh.rotation.y += 0.015;
+
       const currentRoverPos = roverGroup.position;
       const waypoints = pathWaypointsRef.current;
 
@@ -336,50 +586,85 @@ export default function RoverSimulation() {
         let nextPoint = waypoints[0];
         let distToNext = currentRoverPos.distanceTo(nextPoint);
 
-        if (distToNext < 1.2 && waypoints.length > 1) {
+        if (distToNext < 1.1 && waypoints.length > 1) {
           waypoints.shift();
           nextPoint = waypoints[0];
         }
 
-        let desiredDir = new THREE.Vector3().subVectors(nextPoint, currentRoverPos).normalize();
-        currentHeading.lerp(desiredDir, 0.12).normalize();
-        currentRoverPos.addScaledVector(currentHeading, moveSpeed);
+        let desiredDir = new THREE.Vector3().subVectors(nextPoint, currentRoverPos);
+        desiredDir.y = 0;
+        if (desiredDir.lengthSq() > 0.0001) {
+          desiredDir.normalize();
+        } else {
+          desiredDir.copy(currentHeading);
+        }
 
-        wheelMeshes.forEach(w => { w.rotation.x += moveSpeed * 1.5; });
+        currentHeading.lerp(desiredDir, 0.1).normalize();
 
-        roverGroup.lookAt(currentRoverPos.clone().add(currentHeading));
+        currentRoverPos.x += currentHeading.x * moveSpeed;
+        currentRoverPos.z += currentHeading.z * moveSpeed;
+
+        const groundY = getTerrainHeight(currentRoverPos.x, currentRoverPos.z);
+        currentRoverPos.y = groundY;
+
+        const groundNormal = getTerrainNormal(currentRoverPos.x, currentRoverPos.z);
+
+        const forward = currentHeading.clone();
+        const up = groundNormal.clone();
+        const right = new THREE.Vector3().crossVectors(up, forward).normalize();
+        const correctedForward = new THREE.Vector3().crossVectors(right, up).normalize();
+
+        const rotationMatrix = new THREE.Matrix4().makeBasis(right, up, correctedForward);
+        const targetQuaternion = new THREE.Quaternion().setFromRotationMatrix(rotationMatrix);
+
+        roverGroup.quaternion.slerp(targetQuaternion, 0.12);
+
+        const angleDiff = THREE.MathUtils.clamp(
+          new THREE.Vector3().crossVectors(currentHeading, desiredDir).y * 3.0,
+          -0.5,
+          0.5
+        );
+
+        wheelPivots.forEach(item => {
+          if (item.isSteering) {
+            item.pivot.rotation.y = THREE.MathUtils.lerp(item.pivot.rotation.y, angleDiff, 0.15);
+          }
+        });
+
+        wheelMeshes.forEach(w => {
+          w.rotation.x += moveSpeed * 1.8;
+        });
+
         roverPosRef.current.copy(currentRoverPos);
 
-        // Render A* Trajectory Line
         const linePoints = [currentRoverPos.clone(), ...waypoints];
-        pathLine.geometry.setFromPoints(linePoints);
-
-        // Camera Follow
-        camera.position.set(currentRoverPos.x + 7, currentRoverPos.y + 6, currentRoverPos.z + 11);
-        camera.lookAt(currentRoverPos);
+        pathLine.geometry.dispose();
+        pathLine.geometry = new THREE.BufferGeometry().setFromPoints(linePoints);
 
         const totalDistToGoal = currentRoverPos.distanceTo(targetPosRef.current);
 
         setTelemetry({
           status: 'ASTAR_NAV',
-          decision: 'A* ALGORITHM // OPTIMAL_SHORTEST_PATH',
           coords: `X:${currentRoverPos.x.toFixed(1)} Y:${currentRoverPos.y.toFixed(1)} Z:${currentRoverPos.z.toFixed(1)}`,
           targetCoords: `X:${targetPosRef.current.x.toFixed(1)} Z:${targetPosRef.current.z.toFixed(1)}`,
-          hazardDetected: 'NONE',
           speed: `${(moveSpeed * 15).toFixed(1)}m/s`,
           distToTarget: `${totalDistToGoal.toFixed(1)}m`
         });
-      } else {
-        setTelemetry(prev => ({
-          ...prev,
-          status: 'TARGET_ARRIVED',
-          decision: 'WAYPOINT_REACHED // STANDBY',
-          speed: '0.0m/s',
-          distToTarget: '0.0m'
-        }));
       }
 
-      renderer.render(scene, camera);
+      currentZoomRef.current += (targetZoomRef.current - currentZoomRef.current) * 0.18;
+      const distance = 16 * currentZoomRef.current;
+      const { azimuth, polar } = cameraAnglesRef.current;
+      const focusPoint = currentRoverPos.clone().add(panOffsetRef.current);
+
+      camera.position.set(
+        focusPoint.x + distance * Math.sin(polar) * Math.sin(azimuth),
+        focusPoint.y + distance * Math.cos(polar),
+        focusPoint.z + distance * Math.sin(polar) * Math.cos(azimuth)
+      );
+      camera.lookAt(focusPoint);
+
+      composer.render();
     };
 
     animate();
@@ -388,15 +673,16 @@ export default function RoverSimulation() {
       camera.aspect = currentRef.clientWidth / currentRef.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(currentRef.clientWidth, currentRef.clientHeight);
+      composer.setSize(currentRef.clientWidth, currentRef.clientHeight);
     };
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
-      if (currentRef.contains(renderer.domElement)) {
-        currentRef.removeChild(renderer.domElement);
-      }
+      domElement.removeEventListener('contextmenu', handleContextMenu);
+      domElement.removeEventListener('pointerdown', handlePointerDown);
+      domElement.removeEventListener('wheel', handleWheel);
+      if (currentRef.contains(renderer.domElement)) currentRef.removeChild(renderer.domElement);
     };
   }, []);
 
@@ -404,12 +690,18 @@ export default function RoverSimulation() {
     <div className="simulation-wrapper">
       <div className="canvas-container" ref={mountRef} />
 
+      <div className="hasselblad-overlay">
+        <div className="cross cross-center">+</div>
+        <div className="cross cross-tl">+</div>
+        <div className="cross cross-tr">+</div>
+        <div className="cross cross-bl">+</div>
+        <div className="cross cross-br">+</div>
+      </div>
+
       <div className="cyber-sidebar">
         <div className="cyber-box">
-          <div className="box-title">
-            <span className="blink-tag">&gt;_</span> WAYPOINT_SET
-          </div>
-          <form onSubmit={handleSetTarget} className="cyber-form">
+          <div className="box-title"><span className="blink-tag">&gt;_</span> WAYPOINT_SET</div>
+          <form onSubmit={(e) => { e.preventDefault(); updateTarget(inputX, inputZ); }} className="cyber-form">
             <div className="cyber-input-row">
               <label>X:</label>
               <input type="number" step="0.5" value={inputX} onChange={(e) => setInputX(e.target.value)} />
@@ -418,168 +710,15 @@ export default function RoverSimulation() {
               <button type="submit" className="cyber-btn">EXEC</button>
             </div>
           </form>
-
-          <button type="button" className="tacmap-trigger-btn" onClick={() => setIsMapOpen(true)}>
-            [ 🛰️ OPEN 2D TACMAP ]
-          </button>
         </div>
 
         <div className="cyber-box">
-          <div className="box-title">
-            <span className="live-dot"></span> NAV_TELEMETRY
-          </div>
-          
+          <div className="box-title"><span className="live-dot"></span> NAV_TELEMETRY</div>
           <div className="cyber-stat-list">
-            <div className="stat-row">
-              <span className="stat-label">STATE:</span>
-              <span className={`status-badge ${telemetry.status}`}>{telemetry.status}</span>
-            </div>
-            <div className="stat-row">
-              <span className="stat-label">ROVER_POS:</span>
-              <span className="stat-val highlight">{telemetry.coords}</span>
-            </div>
-            <div className="stat-row">
-              <span className="stat-label">TARGET_POS:</span>
-              <span className="stat-val target">{telemetry.targetCoords}</span>
-            </div>
-            <div className="stat-row">
-              <span className="stat-label">HAZARD:</span>
-              <span className="stat-val alert">{telemetry.hazardDetected}</span>
-            </div>
-            <div className="stat-row">
-              <span className="stat-label">VEL/DIST:</span>
-              <span className="stat-val">{telemetry.speed} | {telemetry.distToTarget}</span>
-            </div>
-            <div className="stat-block">
-              <span className="stat-label">DECISION_LOG:</span>
-              <div className="decision-box">{telemetry.decision}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {isMapOpen && (
-        <TacticalMapModal 
-          onClose={() => setIsMapOpen(false)}
-          roverPos={roverPosRef.current}
-          targetPos={targetPosRef.current}
-          pathWaypoints={pathWaypointsRef.current}
-          onSelectWaypoint={(x, z) => updateTarget(x, z)}
-        />
-      )}
-    </div>
-  );
-}
-
-function TacticalMapModal({ onClose, roverPos, targetPos, pathWaypoints, onSelectWaypoint }) {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let animId;
-
-    const MAP_SIZE = 450;
-    const WORLD_BOUNDS = 120;
-
-    const worldToCanvas = (wx, wz) => ({
-      cx: ((wx + WORLD_BOUNDS / 2) / WORLD_BOUNDS) * MAP_SIZE,
-      cy: ((wz + WORLD_BOUNDS / 2) / WORLD_BOUNDS) * MAP_SIZE
-    });
-
-    const renderMap = () => {
-      ctx.fillStyle = '#020d05';
-      ctx.fillRect(0, 0, MAP_SIZE, MAP_SIZE);
-
-      ctx.strokeStyle = 'rgba(0, 255, 102, 0.12)';
-      ctx.lineWidth = 1;
-      const gridSize = MAP_SIZE / 12;
-      for (let i = 0; i <= MAP_SIZE; i += gridSize) {
-        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, MAP_SIZE); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(MAP_SIZE, i); ctx.stroke();
-      }
-
-      OBSTACLES.forEach(obs => {
-        const { cx, cy } = worldToCanvas(obs.x, obs.z);
-        const radiusCanvas = (obs.radius / WORLD_BOUNDS) * MAP_SIZE;
-
-        if (obs.type === 'CRATER') {
-          ctx.beginPath();
-          ctx.arc(cx, cy, radiusCanvas, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(255, 0, 85, 0.15)';
-          ctx.fill();
-          ctx.strokeStyle = '#ff0055';
-          ctx.setLineDash([4, 4]);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        } else {
-          ctx.fillStyle = '#ffcc00';
-          ctx.fillRect(cx - radiusCanvas, cy - radiusCanvas, radiusCanvas * 2, radiusCanvas * 2);
-        }
-      });
-
-      // Draw A* Path Line on 2D TacMap
-      if (pathWaypoints && pathWaypoints.length > 0) {
-        ctx.strokeStyle = '#00ff66';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        const startC = worldToCanvas(roverPos.x, roverPos.z);
-        ctx.moveTo(startC.cx, startC.cy);
-        pathWaypoints.forEach(wp => {
-          const c = worldToCanvas(wp.x, wp.z);
-          ctx.lineTo(c.cx, c.cy);
-        });
-        ctx.stroke();
-      }
-
-      const targetCanvas = worldToCanvas(targetPos.x, targetPos.z);
-      ctx.strokeStyle = '#00e5ff';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(targetCanvas.cx, targetCanvas.cy, 8, 0, Math.PI * 2);
-      ctx.stroke();
-
-      const roverCanvas = worldToCanvas(roverPos.x, roverPos.z);
-      ctx.fillStyle = '#00ff66';
-      ctx.shadowColor = '#00ff66';
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.arc(roverCanvas.cx, roverCanvas.cy, 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      animId = requestAnimationFrame(renderMap);
-    };
-
-    renderMap();
-    return () => cancelAnimationFrame(animId);
-  }, [roverPos, targetPos, pathWaypoints]);
-
-  const handleCanvasClick = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const worldX = ((e.clientX - rect.left) / 450) * 120 - 60;
-    const worldZ = ((e.clientY - rect.top) / 450) * 120 - 60;
-    onSelectWaypoint(worldX.toFixed(1), worldZ.toFixed(1));
-  };
-
-  return (
-    <div className="tacmap-overlay">
-      <div className="tacmap-modal">
-        <div className="tacmap-header">
-          <span>🛰️ TACTICAL_2D_RADAR_MAP // A* PATHFINDER VISUALIZER</span>
-          <button className="tacmap-close-btn" onClick={onClose}>[ X ]</button>
-        </div>
-        <div className="tacmap-body">
-          <canvas ref={canvasRef} width={450} height={450} onClick={handleCanvasClick} className="tacmap-canvas" />
-          <div className="tacmap-legend">
-            <div><span className="leg-box green"></span> ROVER_LOCATION</div>
-            <div><span className="leg-box cyan"></span> TARGET_WAYPOINT</div>
-            <div><span className="leg-box red"></span> CRATER_HAZARD</div>
-            <div><span className="leg-box yellow"></span> ROCK_OBSTACLE</div>
-            <div className="legend-hint">// A* algorithm draws mathematically shortest green line around all hazards</div>
+            <div className="stat-row"><span className="stat-label">STATE:</span><span className="status-badge ASTAR_NAV">{telemetry.status}</span></div>
+            <div className="stat-row"><span className="stat-label">ROVER_POS:</span><span className="stat-val highlight">{telemetry.coords}</span></div>
+            <div className="stat-row"><span className="stat-label">TARGET_POS:</span><span className="stat-val target">{telemetry.targetCoords}</span></div>
+            <div className="stat-row"><span className="stat-label">VEL/DIST:</span><span className="stat-val">{telemetry.speed} | {telemetry.distToTarget}</span></div>
           </div>
         </div>
       </div>
