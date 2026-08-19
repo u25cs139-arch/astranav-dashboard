@@ -1,0 +1,323 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
+
+.simulation-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #010302;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+.canvas-container {
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+/* Sci-Fi Left Stacked Sidebar */
+.cyber-sidebar {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 290px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.cyber-box {
+  pointer-events: auto;
+  background: rgba(2, 10, 4, 0.92);
+  border: 1px solid #00ff66;
+  border-radius: 0px;
+  padding: 10px 12px;
+  color: #00ff66;
+  box-shadow: 0 0 12px rgba(0, 255, 102, 0.15), inset 0 0 6px rgba(0, 255, 102, 0.1);
+}
+
+.box-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: #00ff66;
+  border-bottom: 1px dashed rgba(0, 255, 102, 0.3);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+}
+
+.blink-tag {
+  color: #00ff66;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  background-color: #00ff66;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #00ff66;
+  animation: pulse-green 1.2s infinite;
+}
+
+@keyframes pulse-green {
+  0% { opacity: 1; }
+  50% { opacity: 0.2; }
+  100% { opacity: 1; }
+}
+
+/* Form Controls */
+.cyber-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cyber-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cyber-input-row label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #00ff66;
+}
+
+.cyber-input-row input {
+  width: 55px;
+  background: #000;
+  border: 1px solid #00ff66;
+  border-radius: 0px;
+  color: #00ff66;
+  padding: 4px 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  outline: none;
+}
+
+.cyber-input-row input:focus {
+  background: #001a08;
+  box-shadow: 0 0 8px rgba(0, 255, 102, 0.5);
+}
+
+.cyber-btn {
+  background: #00ff66;
+  color: #000;
+  border: none;
+  padding: 5px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 0.7rem;
+  cursor: pointer;
+  border-radius: 0px;
+  transition: all 0.15s ease;
+}
+
+.cyber-btn:hover {
+  background: #00cc52;
+  box-shadow: 0 0 10px rgba(0, 255, 102, 0.8);
+}
+
+.tacmap-trigger-btn {
+  width: 100%;
+  margin-top: 8px;
+  background: #000;
+  color: #00ff66;
+  border: 1px solid #00ff66;
+  padding: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 0.68rem;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.tacmap-trigger-btn:hover {
+  background: #00ff66;
+  color: #000;
+  box-shadow: 0 0 12px rgba(0, 255, 102, 0.6);
+}
+
+/* Telemetry List */
+.cyber-stat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.7rem;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-label {
+  color: rgba(0, 255, 102, 0.7);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.stat-val {
+  color: #00ff66;
+  font-weight: 700;
+}
+
+.stat-val.highlight { color: #00ff66; }
+.stat-val.target { color: #00e5ff; }
+.stat-val.alert { color: #ff0055; font-weight: 800; }
+
+.stat-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.decision-box {
+  background: #000;
+  border: 1px solid rgba(0, 255, 102, 0.3);
+  padding: 6px;
+  font-size: 0.65rem;
+  color: #00ff66;
+  line-height: 1.2;
+}
+
+.status-badge {
+  padding: 2px 6px;
+  font-size: 0.65rem !important;
+  font-weight: 800;
+  border-radius: 0px;
+  text-transform: uppercase;
+}
+
+.status-badge.AUTO_NAV {
+  background: rgba(0, 255, 102, 0.15);
+  color: #00ff66;
+  border: 1px solid #00ff66;
+}
+
+.status-badge.EMERGENCY_REV {
+  background: rgba(255, 0, 85, 0.2);
+  color: #ff0055;
+  border: 1px solid #ff0055;
+}
+
+.status-badge.SCANNING {
+  background: rgba(255, 204, 0, 0.2);
+  color: #ffcc00;
+  border: 1px solid #ffcc00;
+}
+
+.status-badge.DETOUR_ACTIVE {
+  background: rgba(0, 229, 255, 0.2);
+  color: #00e5ff;
+  border: 1px solid #00e5ff;
+}
+
+.status-badge.TARGET_REACHED {
+  background: rgba(0, 255, 102, 0.3);
+  color: #00ff66;
+  border: 1px solid #00ff66;
+}
+
+/* Modal TacMap Overlay */
+.tacmap-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 5, 2, 0.85);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tacmap-modal {
+  background: #010a03;
+  border: 2px solid #00ff66;
+  box-shadow: 0 0 25px rgba(0, 255, 102, 0.3);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tacmap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #00ff66;
+  font-weight: 800;
+  font-size: 0.78rem;
+  border-bottom: 1px dashed #00ff66;
+  padding-bottom: 8px;
+}
+
+.tacmap-close-btn {
+  background: transparent;
+  color: #ff0055;
+  border: 1px solid #ff0055;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+}
+
+.tacmap-close-btn:hover {
+  background: #ff0055;
+  color: #000;
+}
+
+.tacmap-body {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.tacmap-canvas {
+  border: 1px solid #00ff66;
+  cursor: crosshair;
+}
+
+.tacmap-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #00ff66;
+  font-size: 0.68rem;
+  width: 180px;
+}
+
+.leg-box {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+}
+
+.leg-box.green { background: #00ff66; }
+.leg-box.cyan { background: #00e5ff; }
+.leg-box.red { background: #ff0055; }
+.leg-box.yellow { background: #ffcc00; }
+
+.legend-hint {
+  font-size: 0.6rem;
+  color: rgba(0, 255, 102, 0.6);
+  margin-top: 12px;
+  line-height: 1.3;
+}
