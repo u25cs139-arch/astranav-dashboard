@@ -12,12 +12,12 @@ const CHANDRAYAAN_2_GALLERY = [
     url: '/ch2_earth.png',
     description: 'First set of Earth photographs captured by the LI4 camera on board Chandrayaan-2 during orbit raising maneuvers.'
   },
-  {
+ {
     id: 'CH2-IMG-02',
     title: 'Lunar Surface & Polar Craters',
     instrument: 'Terrain Mapping Camera 2 (TMC-2)',
     date: 'August 23, 2019',
-    url: '/ch2_surface.jpg',
+    url: '/ch2_surface.png',
     description: 'High-resolution 3D topography captured at 100km lunar orbit to generate Digital Elevation Models (DEM).'
   },
   {
@@ -25,7 +25,7 @@ const CHANDRAYAAN_2_GALLERY = [
     title: 'Lunar South Pole Landing Reconnaissance',
     instrument: 'Orbiter High Resolution Camera (OHRC)',
     date: 'September 5, 2019',
-    url: '/ch2_crater.jpg',
+    url: '/ch2_crater.png',
     description: 'Sub-meter spatial resolution (0.32m) optical imagery used for hazard avoidance and boulder assessment near the lunar south pole.'
   }
 ];
