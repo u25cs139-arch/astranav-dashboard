@@ -17,7 +17,7 @@ const CHANDRAYAAN_2_GALLERY = [
     title: 'Lunar Surface & Polar Craters',
     instrument: 'Terrain Mapping Camera 2 (TMC-2)',
     date: 'August 23, 2019',
-    url: 'https://images.unsplash.com/photo-1532693322450-2cb5c511067d?q=80&w=1000&auto=format&fit=crop',
+    url: '/ch2_surface.jpg',
     description: 'High-resolution 3D topography captured at 100km lunar orbit to generate Digital Elevation Models (DEM).'
   },
   {
@@ -25,7 +25,7 @@ const CHANDRAYAAN_2_GALLERY = [
     title: 'Lunar South Pole Landing Reconnaissance',
     instrument: 'Orbiter High Resolution Camera (OHRC)',
     date: 'September 5, 2019',
-    url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=1000&auto=format&fit=crop',
+    url: '/ch2_crater.jpg',
     description: 'Sub-meter spatial resolution (0.32m) optical imagery used for hazard avoidance and boulder assessment near the lunar south pole.'
   }
 ];
