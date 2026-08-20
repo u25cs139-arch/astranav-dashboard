@@ -17,7 +17,7 @@ const OBSTACLES = [
   { x: 30, z: -2, radius: 7, height: 2.5, type: 'HILL', name: 'EAST_RIDGE' },
   { x: -8, z: 25, radius: 9, height: 3.2, type: 'HILL', name: 'SOUTH_PLATEAU' },
   { x: -8, z: -2, radius: 1.5, type: 'ROCK', name: 'BOULDER_A' },
-  { x: 16, z: -4, radius: 1.8, type: 'ROCK', name: 'BOULDER_B' }
+  { x: 16, z: -4, radius: 1.8, type: 'ROCK', name: 'BOULDER_B' },
 ];
 
 const PLANET_CONFIGS = {
@@ -80,7 +80,6 @@ function getTerrainNormal(x, z) {
   return new THREE.Vector3(hL - hR, 2 * eps, hD - hU).normalize();
 }
 
-// Procedural Mars Surface Texture (Iron Oxide Dust + Fine Regolith)
 function createMarsTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 2048; canvas.height = 2048;
@@ -99,7 +98,6 @@ function createMarsTexture() {
   }
   ctx.putImageData(imgData, 0, 0);
 
-  // Darker mineral patches
   for (let i = 0; i < 70; i++) {
     const x = Math.random() * 2048;
     const y = Math.random() * 2048;
@@ -114,7 +112,6 @@ function createMarsTexture() {
   return texture;
 }
 
-// Procedural Moon Surface Texture (Basaltic Maria + Bright Regolith Ejecta)
 function createMoonTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 2048; canvas.height = 2048;
@@ -133,21 +130,11 @@ function createMoonTexture() {
   }
   ctx.putImageData(imgData, 0, 0);
 
-  // Dark Lunar Maria Patches
   for (let i = 0; i < 40; i++) {
     const x = Math.random() * 2048;
     const y = Math.random() * 2048;
     const r = 25 + Math.random() * 80;
     ctx.fillStyle = 'rgba(35, 35, 40, 0.35)';
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  }
-
-  // Bright Impact Ejecta Rays
-  for (let i = 0; i < 60; i++) {
-    const x = Math.random() * 2048;
-    const y = Math.random() * 2048;
-    const r = 5 + Math.random() * 20;
-    ctx.fillStyle = 'rgba(230, 230, 230, 0.4)';
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
   }
 
@@ -211,7 +198,7 @@ export default function MarsSimulation() {
   const targetZoomRef = useRef(1.0); const currentZoomRef = useRef(1.0);
   const cameraAnglesRef = useRef({ azimuth: 0.5, polar: 1.1 });
   const panOffsetRef = useRef(new THREE.Vector3(0, 0, 0));
-  const isDraggingRef = useRef(false); const dragButtonRef = useRef(0); const previousMousePosRef = useRef({ x: event?.clientX || 0, y: event?.clientY || 0 });
+  const isDraggingRef = useRef(false); const dragButtonRef = useRef(0); const previousMousePosRef = useRef({ x: 0, y: 0 });
 
   const [inputX, setInputX] = useState('-20.0'); const [inputZ, setInputZ] = useState('-20.0');
   const [telemetry, setTelemetry] = useState({ status: 'ASTAR_NAV', coords: 'X: 0.0 | Y: 0.4 | Z: 25.0', targetCoords: 'X: -20.0 | Z: -20.0', speed: '1.2 m/s', distToTarget: '55.0m' });
@@ -278,7 +265,6 @@ export default function MarsSimulation() {
       domElement.addEventListener('pointermove', onPointerMove); domElement.addEventListener('pointerup', onPointerUp);
     }; domElement.addEventListener('pointerdown', handlePointerDown);
 
-    // Dynamic Texture Selection
     const surfaceTexture = activePlanet === 'MARS' ? createMarsTexture() : createMoonTexture();
     const terrainGeo = new THREE.PlaneGeometry(130, 130, 240, 240); terrainGeo.rotateX(-Math.PI / 2);
     const pos = terrainGeo.attributes.position; for (let i = 0; i < pos.count; i++) { let x = pos.getX(i); let z = pos.getZ(i); pos.setY(i, getTerrainHeight(x, z)); } terrainGeo.computeVertexNormals();
@@ -297,6 +283,44 @@ export default function MarsSimulation() {
     const rockScatterGeo = new THREE.DodecahedronGeometry(1, 1); const instancedRocks = new THREE.InstancedMesh(rockScatterGeo, rockMat, 300);
     const dummy = new THREE.Object3D();
     for (let i = 0; i < 300; i++) { let rx = (Math.random() - 0.5) * 110; let rz = (Math.random() - 0.5) * 110; let scale = 0.3 + Math.random() * 0.8; let ry = getTerrainHeight(rx, rz); dummy.position.set(rx, ry + scale * 0.1, rz); dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI); dummy.scale.set(scale, scale * (0.6 + Math.random() * 0.4), scale); dummy.updateMatrix(); instancedRocks.setMatrixAt(i, dummy.matrix); } instancedRocks.castShadow = true; instancedRocks.receiveShadow = true; scene.add(instancedRocks);
+
+    // --- FIXED REALISTIC SOLID BOULDERS ---
+    const solidBoulderMat = new THREE.MeshStandardMaterial({
+      color: activePlanet === 'MARS' ? 0x5a382b : 0x555555,
+      roughness: 0.85,
+      metalness: 0.1,
+      flatShading: true // Gives a nice low-poly solid rock facet look without holes
+    });
+
+    for (let i = 0; i < 6; i++) {
+      const randX = (Math.random() - 0.5) * 70;
+      const randZ = (Math.random() - 0.5) * 70;
+      const radius = 2.2 + Math.random() * 1.8;
+
+      OBSTACLES.push({ x: randX, z: randZ, radius: radius, type: 'BIG_BOULDER', name: `ROCK_${i}` });
+
+      // Using Icosahedron with low detail for solid rocky chunks
+      const solidGeo = new THREE.IcosahedronGeometry(radius, 1);
+      const posAttr = solidGeo.attributes.position;
+      for (let j = 0; j < posAttr.count; j++) {
+        const vx = posAttr.getX(j);
+        const vy = posAttr.getY(j);
+        const vz = posAttr.getZ(j);
+        // Slight organic variation without tearing geometry
+        const deform = 0.85 + Math.random() * 0.3;
+        posAttr.setXYZ(j, vx * deform, vy * (0.7 + Math.random() * 0.3), vz * deform);
+      }
+      solidGeo.computeVertexNormals();
+
+      const boulderMesh = new THREE.Mesh(solidGeo, solidBoulderMat);
+      const groundY = getTerrainHeight(randX, randZ);
+      boulderMesh.position.set(randX, groundY + radius * 0.4, randZ);
+      boulderMesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      boulderMesh.scale.set(1.2, 0.8, 1.1); // Make them look like natural seated boulders
+      boulderMesh.castShadow = true;
+      boulderMesh.receiveShadow = true;
+      scene.add(boulderMesh);
+    }
 
     const targetGroup = new THREE.Group();
     const beamGeo = new THREE.CylinderGeometry(0.1, 2.0, 20, 16, 1, true);
@@ -381,8 +405,7 @@ export default function MarsSimulation() {
         <div className="cyber-box">
           <div className="planet-selector" style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
             <button className={`cyber-btn ${activePlanet === 'MARS' ? 'active' : ''}`} onClick={() => setActivePlanet('MARS')} style={{ flex: 1 }}>MARS</button>
-            <button className={`cyber-btn ${activePlanet === 'MOON' ? 'active' : ''}`} onClick={() => setActivePlanet('MOON')} style={{ flex: 1 }}>MOON</button>
-          </div>
+            </div>
           <div className="box-title"><span className="blink-tag">&gt;_</span> WAYPOINT_SET</div>
           <form onSubmit={(e) => { e.preventDefault(); updateTarget(inputX, inputZ); }} className="cyber-form">
             <div className="cyber-input-row">

@@ -10,7 +10,6 @@ function App() {
   const [selectedEnv, setSelectedEnv] = useState(null);
   const [activeModule, setActiveModule] = useState(null);
 
-  // Set the environment immediately when session completes authentication
   const handleAuthenticated = (data) => {
     setSession(data);
     if (data.environment) {
@@ -35,17 +34,15 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [session]);
 
-  // Step 1: Not Authenticated -> Show Landing Page
   if (!session) {
     return <LandingPage onAuthenticated={handleAuthenticated} />;
   }
 
-  // Step 2: Authenticated -> Show Options Tab (Live Visuals, Live Navigation, etc.)
   if (!activeModule) {
     return (
       <ModuleSelection 
-        selectedTarget={selectedEnv || session?.environment}
-        roverId={session?.roverId || 'ROVER-01'}
+        selectedTarget={selectedEnv || session?.environment || 'moon'}
+        roverId={session?.roverId || 'CHANDRAYAAN-2'}
         onSelectModule={(module) => setActiveModule(module)}
         onBack={() => {
           setSession(null);
@@ -55,10 +52,10 @@ function App() {
     );
   }
 
-  // Step 3: Live Navigation Clicked -> Render 3D Simulation
   const currentEnv = selectedEnv || session?.environment?.toLowerCase();
+  const isSimulationActive = activeModule === 'LIVE_NAVIGATION';
 
-  if (activeModule === 'LIVE_NAVIGATION' && currentEnv === 'moon') {
+  if (isSimulationActive && currentEnv === 'moon') {
     return (
       <SimulationProvider>
         <div style={{ position: 'relative' }}>
@@ -85,7 +82,7 @@ function App() {
     );
   }
 
-  if (activeModule === 'LIVE_NAVIGATION' && currentEnv === 'mars') {
+  if (isSimulationActive && currentEnv === 'mars') {
     return (
       <SimulationProvider>
         <div style={{ position: 'relative' }}>
