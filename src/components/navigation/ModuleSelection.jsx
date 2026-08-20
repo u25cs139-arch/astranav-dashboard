@@ -9,7 +9,7 @@ const CHANDRAYAAN_2_GALLERY = [
     title: 'Earth Capture by LI4 Camera',
     instrument: 'LI4 Camera',
     date: 'August 3, 2019',
-    url: 'https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?q=80&w=1000&auto=format&fit=crop',
+    url: '/ch2_earth.png',
     description: 'First set of Earth photographs captured by the LI4 camera on board Chandrayaan-2 during orbit raising maneuvers.'
   },
   {
