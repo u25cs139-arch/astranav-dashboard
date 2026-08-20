@@ -9,7 +9,7 @@ const CHANDRAYAAN_2_GALLERY = [
     title: 'Earth Capture by LI4 Camera',
     instrument: 'LI4 Camera',
     date: 'August 3, 2019',
-    url: '/ch2_earth.jpg',
+    url: '/ch2_earth.png',
     description: 'First set of Earth photographs captured by the LI4 camera on board Chandrayaan-2 during orbit raising maneuvers.'
   },
   {
@@ -85,7 +85,11 @@ export default function ModuleSelection({ selectedTarget = 'mars', roverId = 'MI
     busVoltage: 28.18,
     solarPower: isMars ? 840.0 : 324.5,
     tempPayload: isMars ? -14.2 : 21.4,
-    signalDelay: isMars ? '14m 22s' : '1.28s'
+    signalDelay: isMars ? '14m 22s' : '1.28s',
+    batterySOC: 98.4,
+    transponderFreq: isMars ? '8.4 GHz (X-Band)' : '2.2 GHz (S-Band)',
+    propellantReserve: isMars ? '18.2%' : '42.1%',
+    processorFreq: '160 MHz (SPARC V8)'
   });
 
   useEffect(() => {
@@ -99,7 +103,9 @@ export default function ModuleSelection({ selectedTarget = 'mars', roverId = 'MI
         velocity: +( (isMars ? 2.241 : 1.628) + (Math.random() * 0.002 - 0.001) ).toFixed(3),
         altitude: +( (isMars ? 42170 : 100.24) + (Math.random() * 0.2 - 0.1) ).toFixed(2),
         cpuLoad: +(32.1 + (Math.random() * 1.5 - 0.75)).toFixed(1),
-        busVoltage: +(28.18 + (Math.random() * 0.04 - 0.02)).toFixed(2)
+        busVoltage: +(28.18 + (Math.random() * 0.04 - 0.02)).toFixed(2),
+        solarPower: +((isMars ? 840.0 : 324.5) + (Math.random() * 2.0 - 1.0)).toFixed(1),
+        tempPayload: +((isMars ? -14.2 : 21.4) + (Math.random() * 0.4 - 0.2)).toFixed(1)
       }));
     }, 400);
     return () => clearInterval(interval);
@@ -239,7 +245,7 @@ export default function ModuleSelection({ selectedTarget = 'mars', roverId = 'MI
         }}>
           <div style={{
             width: '90%',
-            maxWidth: '750px',
+            maxWidth: '800px',
             maxHeight: '85vh',
             overflowY: 'auto',
             background: '#0d1117',
@@ -379,28 +385,85 @@ export default function ModuleSelection({ selectedTarget = 'mars', roverId = 'MI
               </div>
             )}
 
-            {/* Hardware Architecture Modal */}
+            {/* Hardware Architecture Modal (Elaborated & Modified) */}
             {modalContent === 'hardware' && (
               <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ color: themeColor, fontSize: '11px', fontWeight: 'bold' }}>ON-BOARD HARDWARE & SUBSYSTEMS [{missionName}]:</div>
+                <div style={{ color: themeColor, fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.5px' }}>
+                  ON-BOARD HARDWARE, SUBSYSTEMS & PAYLOAD MATRIX [{missionName}]:
+                </div>
+
+                {/* Subsystem Metrics Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px' }}>
-                  <div style={{ background: '#161b22', padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#888' }}>PRIMARY SENSORS:</span>
-                    <span style={{ color: '#fff', fontWeight: 'bold' }}>{isMars ? 'MCC, TIS, MSM, LAP, MENCA' : 'OHRC, TMC-2, CLASS, IIRS'}</span>
-                  </div>
-                  <div style={{ background: '#161b22', padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#888' }}>SOLAR GENERATION:</span>
+                  <div style={{ background: '#161b22', padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#888' }}>SOLAR POWER GENERATION:</span>
                     <span style={{ color: '#00ff66', fontWeight: 'bold' }}>{telemetry.solarPower} W</span>
                   </div>
-                  <div style={{ background: '#161b22', padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#888' }}>BUS VOLTAGE:</span>
+                  <div style={{ background: '#161b22', padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#888' }}>MAIN BUS VOLTAGE:</span>
                     <span style={{ color: themeColor, fontWeight: 'bold' }}>{telemetry.busVoltage} V DC</span>
                   </div>
-                  <div style={{ background: '#161b22', padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#888' }}>DECK THERMAL:</span>
+                  <div style={{ background: '#161b22', padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#888' }}>BATTERY STATE OF CHARGE:</span>
+                    <span style={{ color: '#00ff66', fontWeight: 'bold' }}>{telemetry.batterySOC}%</span>
+                  </div>
+                  <div style={{ background: '#161b22', padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#888' }}>DECK THERMAL MATRIX:</span>
                     <span style={{ color: '#fff', fontWeight: 'bold' }}>{telemetry.tempPayload}°C</span>
                   </div>
+                  <div style={{ background: '#161b22', padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#888' }}>COMM / TRANSPONDER:</span>
+                    <span style={{ color: '#fff', fontWeight: 'bold' }}>{telemetry.transponderFreq}</span>
+                  </div>
+                  <div style={{ background: '#161b22', padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#888' }}>OBC PROCESSOR:</span>
+                    <span style={{ color: '#fff', fontWeight: 'bold' }}>{telemetry.processorFreq}</span>
+                  </div>
                 </div>
+
+                {/* Detailed Scientific Payloads Section */}
+                <div style={{ color: themeColor, fontSize: '11px', fontWeight: 'bold', marginTop: '4px' }}>
+                  SCIENTIFIC PAYLOAD ARCHITECTURE:
+                </div>
+
+                {isMars ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11.5px' }}>
+                    <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                      <span style={{ color: themeColor, fontWeight: 'bold' }}>MCC (Mars Color Camera): </span>
+                      <span style={{ color: '#ccc' }}>Tri-color imaging for surface morphology and weather monitoring.</span>
+                    </div>
+                    <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                      <span style={{ color: themeColor, fontWeight: 'bold' }}>TIS (Thermal Infrared Imaging Spectrometer): </span>
+                      <span style={{ color: '#ccc' }}>Measures thermal emission to map surface composition and mineralogy.</span>
+                    </div>
+                    <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                      <span style={{ color: themeColor, fontWeight: 'bold' }}>MSM (Methane Sensor for Mars): </span>
+                      <span style={{ color: '#ccc' }}>Detects atmospheric methane levels at ppb precision to assess potential life markers.</span>
+                    </div>
+                    <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                      <span style={{ color: themeColor, fontWeight: 'bold' }}>LAP (Lyman Alpha Photometer): </span>
+                      <span style={{ color: '#ccc' }}>Measures Deuterium/Hydrogen ratio to quantify atmospheric escape mechanism.</span>
+                    </div>
+                    <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                      <span style={{ color: themeColor, fontWeight: 'bold' }}>MENCA (Mars Exospheric Neutral Composition Analyser): </span>
+                      <span style={{ color: '#ccc' }}>Quadrupole mass spectrometer analyzing neutral exospheric composition.</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11.5px' }}>
+                    <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                      <span style={{ color: themeColor, fontWeight: 'bold' }}>ORBITER PAYLOADS: </span>
+                      <span style={{ color: '#ccc' }}>TMC-2 (3D Topography), OHRC (High-Res Imaging), CLASS (X-ray Spectrometer), IIRS (Infrared Mapping), DFXAR (Dual-Freq Synthetic Aperture Radar).</span>
+                    </div>
+                    <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                      <span style={{ color: themeColor, fontWeight: 'bold' }}>LANDER (VIKRAM) PAYLOADS: </span>
+                      <span style={{ color: '#ccc' }}>RAMBHA-LP (Plasma Density), ChaSTE (Thermal Conductivity Probe), ILSA (Seismometer for Moonquakes).</span>
+                    </div>
+                    <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                      <span style={{ color: themeColor, fontWeight: 'bold' }}>ROVER (PRAGYAN) PAYLOADS: </span>
+                      <span style={{ color: '#ccc' }}>APXS (Alpha Particle X-Ray Spectrometer) & LIBS (Laser-Induced Breakdown Spectroscope) for elemental surface composition.</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -408,31 +471,84 @@ export default function ModuleSelection({ selectedTarget = 'mars', roverId = 'MI
             {modalContent === 'rover' && (
               <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
-                  <h3 style={{ color: themeColor, margin: '0 0 4px 0' }}>
+                  <h3 style={{ color: themeColor, margin: '0 0 4px 0', letterSpacing: '1px' }}>
                     ISRO {missionName} ARCHITECTURE
                   </h3>
                   <p style={{ color: '#888', fontSize: '12px', margin: 0 }}>
-                    {isMars ? 'India’s Maiden Interplanetary Mission to Explore Martian Surface & Atmosphere' : 'Lunar Exploration Mission with Orbiter, Lander (Vikram) & Rover (Pragyan)'}
+                    {isMars 
+                      ? 'India’s Maiden Interplanetary Mission to Explore Martian Surface & Atmosphere' 
+                      : 'India’s Second Lunar Exploration Mission featuring Orbiter, Vikram Lander & Pragyan Rover'}
                   </p>
                 </div>
 
+                {/* STATS GRID */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px' }}>
-                  <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px' }}>
-                    <span style={{ color: '#888' }}>LAUNCH VEHICLE:</span>
-                    <div style={{ color: '#fff', fontWeight: 'bold' }}>{isMars ? 'PSLV-C25' : 'GSLV Mk III-M1'}</div>
+                  <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                    <span style={{ color: '#888', fontSize: '11px' }}>LAUNCH VEHICLE:</span>
+                    <div style={{ color: '#fff', fontWeight: 'bold', marginTop: '2px' }}>{isMars ? 'PSLV-C25' : 'GSLV Mk III-M1'}</div>
                   </div>
-                  <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px' }}>
-                    <span style={{ color: '#888' }}>LAUNCH DATE:</span>
-                    <div style={{ color: '#fff', fontWeight: 'bold' }}>{isMars ? 'November 5, 2013' : 'July 22, 2019'}</div>
+                  <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                    <span style={{ color: '#888', fontSize: '11px' }}>LAUNCH DATE:</span>
+                    <div style={{ color: '#fff', fontWeight: 'bold', marginTop: '2px' }}>{isMars ? 'November 5, 2013' : 'July 22, 2019'}</div>
                   </div>
-                  <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px' }}>
-                    <span style={{ color: '#888' }}>ORBIT INSERTION:</span>
-                    <div style={{ color: '#00ff66', fontWeight: 'bold' }}>{isMars ? 'September 24, 2014' : 'August 20, 2019'}</div>
+                  <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                    <span style={{ color: '#888', fontSize: '11px' }}>ORBIT INSERTION:</span>
+                    <div style={{ color: '#00ff66', fontWeight: 'bold', marginTop: '2px' }}>{isMars ? 'September 24, 2014' : 'August 20, 2019'}</div>
                   </div>
-                  <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px' }}>
-                    <span style={{ color: '#888' }}>PAYLOAD COUNT:</span>
-                    <div style={{ color: '#00ff66', fontWeight: 'bold' }}>{isMars ? '5 Scientific Instruments' : '8 Orbiter Payloads'}</div>
+                  <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                    <span style={{ color: '#888', fontSize: '11px' }}>PAYLOAD COUNT:</span>
+                    <div style={{ color: '#00ff66', fontWeight: 'bold', marginTop: '2px' }}>{isMars ? '5 Scientific Payloads' : '8 Orbiter + 5 Lander + 2 Rover'}</div>
                   </div>
+                </div>
+
+                {/* MISSION HISTORY */}
+                <div style={{ color: '#ff4d4d', fontSize: '12px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '6px' }}>
+                  MISSION HISTORY:
+                </div>
+                <div style={{ background: '#161b22', padding: '12px', borderRadius: '6px', border: '1px solid #30363d' }}>
+                  <p style={{ color: '#ccc', fontSize: '12px', lineHeight: '1.5', margin: 0 }}>
+                    {isMars 
+                      ? 'The Mars Orbiter Mission (MOM), also called Mangalyaan, was India\'s first interplanetary mission. Launched by ISRO, it successfully reached Martian orbit on September 24, 2014, making India the first nation to achieve this in its maiden attempt.'
+                      : 'Chandrayaan-2 is India\'s second lunar exploration mission, launched to study the Moon\'s topography, mineralogy, surface chemical composition, thermo-physical characteristics, and atmosphere. Although soft-landing telemetry on Vikram lander was lost, the orbiter remains fully operational in lunar orbit.'}
+                  </p>
+                </div>
+
+                {/* MISSION PURPOSE & OBJECTIVES */}
+                <div style={{ color: '#ff4d4d', fontSize: '12px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '6px' }}>
+                  MISSION PURPOSE & OBJECTIVES:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {isMars ? (
+                    <>
+                      <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <span style={{ color: '#ff4d4d', fontWeight: 'bold', fontSize: '13px' }}>01</span>
+                        <p style={{ color: '#ccc', fontSize: '11.5px', margin: 0, lineHeight: '1.3' }}>Develop the technologies required for designing, planning, managing, and operating an interplanetary mission.</p>
+                      </div>
+                      <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <span style={{ color: '#ff4d4d', fontWeight: 'bold', fontSize: '13px' }}>02</span>
+                        <p style={{ color: '#ccc', fontSize: '11.5px', margin: 0, lineHeight: '1.3' }}>Explore Martian surface features, morphology, mineralogy, and Martian atmosphere using indigenous scientific instruments.</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <span style={{ color: '#ff4d4d', fontWeight: 'bold', fontSize: '13px' }}>01</span>
+                        <p style={{ color: '#ccc', fontSize: '11.5px', margin: 0, lineHeight: '1.3' }}>Map the lunar surface topography and mineralogical composition to enhance understanding of the Moon's origin and evolution.</p>
+                      </div>
+                      <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <span style={{ color: '#ff4d4d', fontWeight: 'bold', fontSize: '13px' }}>02</span>
+                        <p style={{ color: '#ccc', fontSize: '11.5px', margin: 0, lineHeight: '1.3' }}>Confirm the presence and distribution of water ice in the permanently shadowed regions of the lunar south pole.</p>
+                      </div>
+                      <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <span style={{ color: '#ff4d4d', fontWeight: 'bold', fontSize: '13px' }}>03</span>
+                        <p style={{ color: '#ccc', fontSize: '11.5px', margin: 0, lineHeight: '1.3' }}>Conduct in-situ elemental analysis of the lunar regolith using the Pragyan rover's scientific payloads.</p>
+                      </div>
+                      <div style={{ background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <span style={{ color: '#ff4d4d', fontWeight: 'bold', fontSize: '13px' }}>04</span>
+                        <p style={{ color: '#ccc', fontSize: '11.5px', margin: 0, lineHeight: '1.3' }}>Study the tenuous lunar exosphere and evaluate thermo-physical properties of the lunar soil.</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}

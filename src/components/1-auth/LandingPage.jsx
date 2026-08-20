@@ -5,10 +5,10 @@ const VALID_OFFICERS = {
   'ADMIN-01': 'secure123',
 };
 
-const VALID_ROVERS = {
-  'ROVER-01': 'rover123',
-  'ROVER-02': 'rover123',
-  'ASTRA-X1': 'astra123',
+// Updated valid IDs & Passwords for Chandrayaan-2 and Chandrayaan-3
+const VALID_CHANDRAYAAN = {
+  'CHANDRAYAAN-2': 'chandrayaan2',
+  'CHANDRAYAAN-3': 'chandrayaan3',
 };
 
 export default function LandingPage({ onAuthenticated }) {
@@ -16,8 +16,8 @@ export default function LandingPage({ onAuthenticated }) {
   const [officerId, setOfficerId] = useState('');
   const [officerPassword, setOfficerPassword] = useState('');
   const [selectedEnvironment, setSelectedEnvironment] = useState('');
-  const [roverId, setRoverId] = useState('');
-  const [roverPassword, setRoverPassword] = useState('');
+  const [chandrayaanId, setChandrayaanId] = useState('');
+  const [chandrayaanPassword, setChandrayaanPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleSelectEnvironment = (env) => {
@@ -54,23 +54,22 @@ export default function LandingPage({ onAuthenticated }) {
     }
   };
 
-  const handleRoverIdSubmit = (e) => {
+  const handleChandrayaanIdSubmit = (e) => {
     e.preventDefault();
-    const formattedId = roverId.toUpperCase();
-    if (VALID_ROVERS[formattedId]) {
+    const formattedId = chandrayaanId.toUpperCase();
+    if (VALID_CHANDRAYAAN[formattedId]) {
       setError('');
       setStep(4);
     } else {
-      setError('INVALID ROVER ID');
+      setError('INVALID CHANDRAYAAN ID (USE CHANDRAYAAN-2 OR CHANDRAYAAN-3)');
     }
   };
 
-  const handleRoverPasswordSubmit = (e) => {
+  const handleChandrayaanPasswordSubmit = (e) => {
     e.preventDefault();
-    const formattedId = roverId.toUpperCase();
-    if (VALID_ROVERS[formattedId] === roverPassword) {
+    const formattedId = chandrayaanId.toUpperCase();
+    if (VALID_CHANDRAYAAN[formattedId] === chandrayaanPassword) {
       setError('');
-      // Send complete auth payload directly to bypass duplicate environment screen
       onAuthenticated({
         officerId,
         environment: selectedEnvironment,
@@ -78,7 +77,7 @@ export default function LandingPage({ onAuthenticated }) {
         isAuthenticated: true,
       });
     } else {
-      setError('INCORRECT ROVER PASSWORD');
+      setError('INCORRECT PASSCODE');
     }
   };
 
@@ -145,7 +144,7 @@ export default function LandingPage({ onAuthenticated }) {
               >
                 <div style={styles.cardIcon}>🌕</div>
                 <h2 style={styles.cardHeader}>LUNAR SURFACE</h2>
-                <p style={styles.cardSub}>ROVER ON MOON</p>
+                <p style={styles.cardSub}>CHANDRAYAAN DEPLOYMENT</p>
                 <span style={styles.cardStatus}>SYS STATUS: ACTIVE // READY</span>
                 <button style={styles.largeCardButton}>INITIATE LUNAR LINK [F1]</button>
               </div>
@@ -157,7 +156,7 @@ export default function LandingPage({ onAuthenticated }) {
               >
                 <div style={styles.cardIcon}>🔴</div>
                 <h2 style={styles.cardHeader}>MARTIAN SURFACE</h2>
-                <p style={styles.cardSub}>ROVER ON MARS</p>
+                <p style={styles.cardSub}>EXPLORATION DEPLOYMENT</p>
                 <span style={styles.cardStatus}>SYS STATUS: ACTIVE // READY</span>
                 <button style={styles.largeCardButton}>INITIATE MARS LINK [F10]</button>
               </div>
@@ -165,16 +164,16 @@ export default function LandingPage({ onAuthenticated }) {
           </div>
         )}
 
-        {/* STEP 3: ROVER ID ENTRY */}
+        {/* STEP 3: CHANDRAYAAN SELECTION */}
         {step === 3 && (
-          <form onSubmit={handleRoverIdSubmit} style={styles.form}>
+          <form onSubmit={handleChandrayaanIdSubmit} style={styles.form}>
             <p style={styles.subtext}>DEPLOYMENT: {selectedEnvironment}</p>
-            <label style={styles.label}>ENTER ROVER ID</label>
+            <label style={styles.label}>ENTER CHANDRAYAAN ID</label>
             <input
               type="text"
-              value={roverId}
-              onChange={(e) => setRoverId(e.target.value.toUpperCase())}
-              placeholder="e.g. ROVER-01"
+              value={chandrayaanId}
+              onChange={(e) => setChandrayaanId(e.target.value.toUpperCase())}
+              placeholder="e.g. CHANDRAYAAN-2 or CHANDRAYAAN-3"
               style={styles.input}
               required
               autoFocus
@@ -183,15 +182,15 @@ export default function LandingPage({ onAuthenticated }) {
           </form>
         )}
 
-        {/* STEP 4: ROVER PASSWORD ENTRY */}
+        {/* STEP 4: PASSCODE ENTRY */}
         {step === 4 && (
-          <form onSubmit={handleRoverPasswordSubmit} style={styles.form}>
-            <p style={styles.subtext}>ROVER: {roverId}</p>
-            <label style={styles.label}>ENTER ROVER PASSWORD</label>
+          <form onSubmit={handleChandrayaanPasswordSubmit} style={styles.form}>
+            <p style={styles.subtext}>TARGET: {chandrayaanId}</p>
+            <label style={styles.label}>ENTER CHANDRAYAAN PASSCODE</label>
             <input
               type="password"
-              value={roverPassword}
-              onChange={(e) => setRoverPassword(e.target.value)}
+              value={chandrayaanPassword}
+              onChange={(e) => setChandrayaanPassword(e.target.value)}
               placeholder="••••••••"
               style={styles.input}
               required
@@ -207,7 +206,9 @@ export default function LandingPage({ onAuthenticated }) {
 
 const styles = {
   container: {
-    position: 'relative',
+    position: 'fixed',
+    top: 0,
+    left: 0,
     width: '100vw',
     height: '100vh',
     display: 'flex',
@@ -217,9 +218,12 @@ const styles = {
     color: '#00ff66',
     fontFamily: 'monospace',
     overflow: 'hidden',
+    zIndex: 999,
   },
   videoBg: {
     position: 'absolute',
+    top: 0,
+    left: 0,
     width: '100%',
     height: '100%',
     objectFit: 'cover',
@@ -227,6 +231,8 @@ const styles = {
   },
   overlay: {
     position: 'absolute',
+    top: 0,
+    left: 0,
     width: '100%',
     height: '100%',
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -244,6 +250,7 @@ const styles = {
     flexDirection: 'column',
     boxSizing: 'border-box',
     transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+    margin: 'auto',
   },
   logoContainer: {
     display: 'flex',
