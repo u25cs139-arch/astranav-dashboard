@@ -5,10 +5,16 @@ const VALID_OFFICERS = {
   'ADMIN-01': 'secure123',
 };
 
-// Updated valid IDs & Passwords for Chandrayaan-2 and Chandrayaan-3
-const VALID_CHANDRAYAAN = {
-  'CHANDRAYAAN-2': 'chandrayaan2',
-  'CHANDRAYAAN-3': 'chandrayaan3',
+// Credentials for Moon & Mars Missions
+const VALID_MISSIONS = {
+  MOON: {
+    'CHANDRAYAAN-2': 'chandrayaan2',
+    'CHANDRAYAAN-3': 'chandrayaan3',
+  },
+  MARS: {
+    'MOM': 'mangalyaan',
+    'MANGALYAAN-1': 'mangalyaan',
+  },
 };
 
 export default function LandingPage({ onAuthenticated }) {
@@ -16,12 +22,16 @@ export default function LandingPage({ onAuthenticated }) {
   const [officerId, setOfficerId] = useState('');
   const [officerPassword, setOfficerPassword] = useState('');
   const [selectedEnvironment, setSelectedEnvironment] = useState('');
-  const [chandrayaanId, setChandrayaanId] = useState('');
-  const [chandrayaanPassword, setChandrayaanPassword] = useState('');
+  const [missionId, setMissionId] = useState('');
+  const [missionPassword, setMissionPassword] = useState('');
   const [error, setError] = useState('');
+
+  const isMars = selectedEnvironment === 'MARS';
 
   const handleSelectEnvironment = (env) => {
     setSelectedEnvironment(env);
+    setMissionId('');
+    setMissionPassword('');
     setError('');
     setStep(3);
   };
@@ -54,21 +64,29 @@ export default function LandingPage({ onAuthenticated }) {
     }
   };
 
-  const handleChandrayaanIdSubmit = (e) => {
+  const handleMissionIdSubmit = (e) => {
     e.preventDefault();
-    const formattedId = chandrayaanId.toUpperCase();
-    if (VALID_CHANDRAYAAN[formattedId]) {
+    const formattedId = missionId.toUpperCase();
+    const activeMissions = VALID_MISSIONS[selectedEnvironment] || {};
+
+    if (activeMissions[formattedId]) {
       setError('');
       setStep(4);
     } else {
-      setError('INVALID CHANDRAYAAN ID (USE CHANDRAYAAN-2 OR CHANDRAYAAN-3)');
+      if (isMars) {
+        setError('INVALID MANGALYAAN ID (USE MOM OR MANGALYAAN-1)');
+      } else {
+        setError('INVALID CHANDRAYAAN ID (USE CHANDRAYAAN-2 OR CHANDRAYAAN-3)');
+      }
     }
   };
 
-  const handleChandrayaanPasswordSubmit = (e) => {
+  const handleMissionPasswordSubmit = (e) => {
     e.preventDefault();
-    const formattedId = chandrayaanId.toUpperCase();
-    if (VALID_CHANDRAYAAN[formattedId] === chandrayaanPassword) {
+    const formattedId = missionId.toUpperCase();
+    const activeMissions = VALID_MISSIONS[selectedEnvironment] || {};
+
+    if (activeMissions[formattedId] === missionPassword) {
       setError('');
       onAuthenticated({
         officerId,
@@ -93,6 +111,8 @@ export default function LandingPage({ onAuthenticated }) {
           ...styles.terminalBox, 
           width: step === 2 ? '85vw' : '380px',
           height: step === 2 ? '80vh' : 'auto',
+          borderColor: isMars && step >= 3 ? '#ff4d4d' : '#00ff66',
+          boxShadow: isMars && step >= 3 ? '0 0 25px rgba(255, 77, 77, 0.25)' : '0 0 25px rgba(0, 255, 102, 0.25)',
         }}
       >
         <div style={styles.logoContainer}>
@@ -103,7 +123,9 @@ export default function LandingPage({ onAuthenticated }) {
           />
         </div>
 
-        <h1 style={styles.title}>ASTRA_NAV // GATEWAY</h1>
+        <h1 style={{ ...styles.title, color: isMars && step >= 3 ? '#ff4d4d' : '#00ff66' }}>
+          ASTRA_NAV // GATEWAY
+        </h1>
 
         {error && <div style={styles.errorText}>[!] {error}</div>}
 
@@ -151,52 +173,78 @@ export default function LandingPage({ onAuthenticated }) {
 
               {/* MARTIAN CARD */}
               <div 
-                style={styles.largeCard} 
+                style={{ ...styles.largeCard, borderColor: '#ff4d4d', backgroundColor: 'rgba(25, 0, 5, 0.7)' }} 
                 onClick={() => handleSelectEnvironment('MARS')}
               >
                 <div style={styles.cardIcon}>🔴</div>
-                <h2 style={styles.cardHeader}>MARTIAN SURFACE</h2>
-                <p style={styles.cardSub}>EXPLORATION DEPLOYMENT</p>
-                <span style={styles.cardStatus}>SYS STATUS: ACTIVE // READY</span>
-                <button style={styles.largeCardButton}>INITIATE MARS LINK [F10]</button>
+                <h2 style={{ ...styles.cardHeader, color: '#ff4d4d' }}>MARTIAN SURFACE</h2>
+                <p style={{ ...styles.cardSub, color: '#ff8080' }}>EXPLORATION DEPLOYMENT</p>
+                <span style={{ ...styles.cardStatus, color: '#cc3333' }}>SYS STATUS: ACTIVE // READY</span>
+                <button style={{ ...styles.largeCardButton, backgroundColor: '#ff4d4d' }}>INITIATE MARS LINK [F10]</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* STEP 3: CHANDRAYAAN SELECTION */}
+        {/* STEP 3: MISSION ID SELECTION (CHANDRAYAAN / MANGALYAAN) */}
         {step === 3 && (
-          <form onSubmit={handleChandrayaanIdSubmit} style={styles.form}>
-            <p style={styles.subtext}>DEPLOYMENT: {selectedEnvironment}</p>
-            <label style={styles.label}>ENTER CHANDRAYAAN ID</label>
+          <form onSubmit={handleMissionIdSubmit} style={styles.form}>
+            <p style={{ ...styles.subtext, color: isMars ? '#ff8080' : '#00cc52' }}>
+              DEPLOYMENT: {selectedEnvironment}
+            </p>
+            <label style={{ ...styles.label, color: isMars ? '#ff4d4d' : '#00ff66' }}>
+              ENTER {isMars ? 'MANGALYAAN' : 'CHANDRAYAAN'} ID
+            </label>
             <input
               type="text"
-              value={chandrayaanId}
-              onChange={(e) => setChandrayaanId(e.target.value.toUpperCase())}
-              placeholder="e.g. CHANDRAYAAN-2 or CHANDRAYAAN-3"
-              style={styles.input}
+              value={missionId}
+              onChange={(e) => setMissionId(e.target.value.toUpperCase())}
+              placeholder={isMars ? 'e.g. MOM or MANGALYAAN-1' : 'e.g. CHANDRAYAAN-2 or CHANDRAYAAN-3'}
+              style={{ ...styles.input, borderColor: isMars ? '#ff4d4d' : '#00ff66', color: isMars ? '#ff4d4d' : '#00ff66' }}
               required
               autoFocus
             />
-            <button type="submit" style={styles.button}>NEXT</button>
+            <button type="submit" style={{ ...styles.button, backgroundColor: isMars ? '#ff4d4d' : '#00ff66' }}>
+              NEXT
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setStep(2)} 
+              style={styles.backButton}
+            >
+              ← BACK TO TARGET SELECTION
+            </button>
           </form>
         )}
 
         {/* STEP 4: PASSCODE ENTRY */}
         {step === 4 && (
-          <form onSubmit={handleChandrayaanPasswordSubmit} style={styles.form}>
-            <p style={styles.subtext}>TARGET: {chandrayaanId}</p>
-            <label style={styles.label}>ENTER CHANDRAYAAN PASSCODE</label>
+          <form onSubmit={handleMissionPasswordSubmit} style={styles.form}>
+            <p style={{ ...styles.subtext, color: isMars ? '#ff8080' : '#00cc52' }}>
+              TARGET: {missionId}
+            </p>
+            <label style={{ ...styles.label, color: isMars ? '#ff4d4d' : '#00ff66' }}>
+              ENTER {isMars ? 'MANGALYAAN' : 'CHANDRAYAAN'} PASSCODE
+            </label>
             <input
               type="password"
-              value={chandrayaanPassword}
-              onChange={(e) => setChandrayaanPassword(e.target.value)}
+              value={missionPassword}
+              onChange={(e) => setMissionPassword(e.target.value)}
               placeholder="••••••••"
-              style={styles.input}
+              style={{ ...styles.input, borderColor: isMars ? '#ff4d4d' : '#00ff66', color: isMars ? '#ff4d4d' : '#00ff66' }}
               required
               autoFocus
             />
-            <button type="submit" style={styles.button}>LAUNCH TELEMETRY</button>
+            <button type="submit" style={{ ...styles.button, backgroundColor: isMars ? '#ff4d4d' : '#00ff66' }}>
+              LAUNCH TELEMETRY
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setStep(3)} 
+              style={styles.backButton}
+            >
+              ← BACK TO MISSION ID
+            </button>
           </form>
         )}
       </div>
@@ -359,6 +407,16 @@ const styles = {
     cursor: 'pointer',
     marginTop: '0.5rem',
     borderRadius: '4px',
+  },
+  backButton: {
+    backgroundColor: 'transparent',
+    color: '#888',
+    border: 'none',
+    padding: '0.4rem',
+    cursor: 'pointer',
+    marginTop: '0.4rem',
+    fontFamily: 'monospace',
+    fontSize: '0.75rem',
   },
   errorText: {
     color: '#ff3333',
